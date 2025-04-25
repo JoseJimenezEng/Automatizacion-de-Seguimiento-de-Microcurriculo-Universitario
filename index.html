@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatización de Proceso de Reporte de Contenidos - Universidad Sergio Arboleda</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <!-- PDF.js -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.min.js"></script>
+    <script>
+        // Dónde buscar la librería
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.worker.min.js';
+    </script>
+
+</head>
+
+<body>
+    
+    <header class="header">
+        <div class="header-content">
+            <img src="https://www.usergioarboleda.edu.co/sergiointeractivo/wp-content/uploads/2020/03/kisspng-sergio-arboleda-university-logo-business-school-encuentro-colombiano-de-combinatoria-ecco-2-18-5b778e55a3c529.9334156515345618776708.png" alt="Logo Universidad Sergio Arboleda" class="logo">
+            <div class="header-title">
+                <h2>Facultad de Derecho</h2>
+                <p>Sistema de Gestión Académica</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>Automatización de Proceso de Reporte de Contenidos</h1>
+
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-connector"></div>
+                <div class="step-title">Subir Excel</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-connector"></div>
+                <div class="step-title">Seleccionar Datos</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-connector"></div>
+                <div class="step-title">Revisar Resultados</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-connector"></div>
+                <div class="step-title">Subir Microdiseño</div>
+            </div>
+            <div class="step" id="step5">
+                <div class="step-number">5</div>
+                <div class="step-title">Enviar Reporte</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-file-excel"></i> Paso 1: Subir archivo Excel de clases</h2>
+            <div class="file-upload">
+                <div class="file-input-container">
+                    <input type="file" id="excelFile" class="file-input" accept=".xlsx, .xls">
+                </div>
+                <div id="excelFileName" class="file-name"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-filter"></i> Paso 2: Seleccionar Módulo y Docente</h2>
+            <div class="dropdowns">
+                <div class="dropdown-container">
+                    <label for="moduleSelect">Módulo:</label>
+                    <select id="moduleSelect" disabled>
+                        <option value="">Seleccione un módulo</option>
+                    </select>
+                </div>
+                <div class="dropdown-container">
+                    <label for="teacherSelect">Docente:</label>
+                    <select id="teacherSelect" disabled>
+                        <option value="">Seleccione un docente</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultsSection" class="section hidden">
+            <h2 class="section-title"><i class="fas fa-table"></i> Paso 3: Resultados</h2>
+            <div class="results">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Módulo</th>
+                            <th>Grupo</th>
+                            <th>Docente</th>
+                            <th>Fecha de Clase</th>
+                            <th>Tema</th>
+                            <th>Fecha Ingreso</th>
+                            <th>Hrs. Clase</th>
+                            <th>Hora Ingreso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="microdisenoSection" class="section hidden">
+            <h2 class="section-title"><i class="fas fa-file-pdf"></i> Paso 4: Subir Microdiseño</h2>
+            <div class="file-upload">
+                <div class="file-input-container">
+                    <input type="file" id="microdisenoFile" class="file-input" accept=".pdf, .doc, .docx">
+                </div>
+                <div id="microdisenoFileName" class="file-name"></div>
+            </div>
+        </div>
+
+        <div id="submitSection" class="section hidden">
+            <h2 class="section-title"><i class="fas fa-paper-plane"></i> Paso 5: Enviar Reporte</h2>
+            <div class="file-upload">
+                <button id="submitButton" disabled><i class="fas fa-upload"></i> Enviar Reporte</button>
+            </div>
+            <div id="message" class="message hidden"></div>
+        </div>
+
+        <!-- Sección de Webhook -->
+        <div class="section webhook-section">
+            <h2 class="section-title webhook-notification">
+                <i class="fas fa-code"></i> Recepción de Datos (Webhook)
+                <span id="notificationBadge" class="notification-badge hidden">0</span>
+            </h2>
+
+            <div class="webhook-status">
+                <div class="status-indicator">
+                    <div id="statusDot" class="status-dot offline"></div>
+                    <span id="statusText" class="status-text">Webhook desconectado</span>
+                </div>
+                <div class="webhook-url-container">
+                    <span class="webhook-url" id="webhookUrl">http://localhost:3000/webhook</span>
+                    <button id="copyUrlBtn" class="copy-btn" title="Copiar URL"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+
+            <div id="webhookResults" class="webhook-results hidden">
+                <h3>Resultados del Análisis:</h3>
+                <div class="results">
+                    <table id="webhookTable" class="webhook-table">
+                        <thead>
+                            <tr>
+                                <th>Grupo</th>
+                                <th>Fecha de Clase</th>
+                                <th>Tema Dado</th>
+                                <th>Tema Esperado</th>
+                                <th>Semana</th>
+                                <th>Estado</th>
+                                <th>Observaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="webhookTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para mostrar texto completo -->
+    <div id="textModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3 id="modalTitle" class="modal-title">Texto Completo</h3>
+            <div id="modalBody" class="modal-body"></div>
+            <div class="modal-footer">
+                <button id="closeModalButton">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <img src="https://www.usergioarboleda.edu.co/sergiointeractivo/wp-content/uploads/2020/03/kisspng-sergio-arboleda-university-logo-business-school-encuentro-colombiano-de-combinatoria-ecco-2-18-5b778e55a3c529.9334156515345618776708.png" alt="Logo Universidad Sergio Arboleda" class="footer-logo">
+            <p>© 2025 Universidad Sergio Arboleda - Todos los derechos reservados</p>
+            <p>Sistema de Automatización de Proceso de Reporte de Contenidos</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
