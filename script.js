@@ -57,7 +57,7 @@ initWebhookConnection()
 // Función para inicializar la conexión del webhook usando Server-Sent Events (SSE)
 function initWebhookConnection() {
   // URL del servidor de webhook
-  const serverUrl = "http://localhost:3000"
+  const serverUrl = "https://proyectousa.onrender.com"
 
   try {
     // Crear una conexión SSE
