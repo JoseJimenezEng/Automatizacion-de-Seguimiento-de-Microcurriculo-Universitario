@@ -477,6 +477,7 @@ async function submitReport() {
       const payload = {
         modulo: selectedModule,
         docente: selectedTeacher,
+        sessionToken: sessionToken, // Incluir el token de sesión
         microdiseno: {
           nombre: microdisenoFile.name,
           tipo: microdisenoFile.type,
