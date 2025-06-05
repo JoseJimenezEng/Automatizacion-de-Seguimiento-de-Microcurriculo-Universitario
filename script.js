@@ -604,7 +604,6 @@ function sendActionRequest(groupId, entry, color) {
         color: color,
         modulo: selectedModule,
         docente: selectedTeacher,
-        row: row++,
         sessionToken: sessionToken // Incluir el token de sesión
     };
 
@@ -612,7 +611,7 @@ function sendActionRequest(groupId, entry, color) {
     showMessage('<i class="fas fa-spinner fa-spin"></i> Enviando acción...', "success");
 
     // URL para la solicitud POST
-    const postUrl = "https://hook.us2.make.com/m4sw3hygyr8rh33ishohc6f1l2c6rim1";
+    const postUrl = "https://hook.us2.make.com/qefil1n1twwp97kczuuw4ugbvn6sr2es";
 
     // Enviar datos al webhook
     fetch(postUrl, {
