@@ -694,3 +694,20 @@ tr:hover {
         gap: 10px;
     }
 }
+
+.badge {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.badge-coherent {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.badge-incoherent {
+  background-color: var(--error-color);
+  color: white;
+}
