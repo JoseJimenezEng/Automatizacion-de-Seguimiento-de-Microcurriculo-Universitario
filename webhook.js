@@ -90,17 +90,12 @@ app.post('/webhook', (req, res) => {
             jsonString = jsonString.substring(0, jsonString.length - 3);
         }
         
+        
         // Parsear el JSON
         const data = JSON.parse(jsonString);
         
         // Añadir campo "observations" a cada elemento si no existe
-        for (const groupId in data) {
-            data[groupId].forEach(item => {
-                if (!item.hasOwnProperty('observations')) {
-                    item.observations = "None";
-                }
-            });
-        }
+        
         
         // Determinar a qué sesión enviar los datos
         // Por simplicidad, si no se especifica sesión, crear una nueva o usar la primera activa
