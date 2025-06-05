@@ -13,12 +13,7 @@ const sessionClients = new Map();
 
 // Middleware para procesar JSON y habilitar CORS
 app.use(bodyParser.text({ type: '*/*' }));
-// app.use(cors());
-app.use(cors({
-    origin: '*', // Permitir todas las orígenes
-    methods: ['GET', 'POST'], // Métodos permitidos
-    allowedHeaders: ['Content-Type', 'Authorization'] // Cabeceras permitidas
-}));
+app.use(cors());
 
 // Endpoint para SSE (Server-Sent Events) con soporte de sesiones
 app.get('/events', (req, res) => {
@@ -109,10 +104,15 @@ app.post('/webhook', (req, res) => {
         
         // Determinar a qué sesión enviar los datos
         // Por simplicidad, si no se especifica sesión, crear una nueva o usar la primera activa
-        let targetSessionToken = data.token;
+        let targetSessionToken = null;
         
         // Buscar la primera sesión activa (en un escenario real, esto se haría de manera más específica)
-        
+        for (const [sessionToken, clients] of sessionClients.entries()) {
+            if (clients.length > 0) {
+                targetSessionToken = sessionToken;
+                break;
+            }
+        }
         
         if (targetSessionToken) {
             // Guardar los datos para la sesión específica
