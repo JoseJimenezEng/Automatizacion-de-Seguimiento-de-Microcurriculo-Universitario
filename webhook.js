@@ -1,27 +1,26 @@
-// webhook.js
+// REEMPLAZAR TODO EL ARCHIVO WEBHOOK EXISTENTE CON ESTE CÓDIGO
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Almacenamiento en memoria para datos por sesión
-const sessionData = {};
-
-// Clientes conectados para SSE (ahora asociados a sesiones)
-const clients = [];
+// Almacenamiento en memoria para los datos por sesión
+const sessionData = new Map();
+// Clientes conectados por sesión
+const sessionClients = new Map();
 
 // Middleware para procesar JSON y habilitar CORS
 app.use(bodyParser.text({ type: '*/*' }));
 app.use(cors());
 
-// Endpoint para SSE (Server-Sent Events)
+// Endpoint para SSE (Server-Sent Events) con soporte de sesiones
 app.get('/events', (req, res) => {
-    // Obtener el sessionId de los parámetros de consulta
-    const { sessionId } = req.query;
+    const sessionToken = req.query.token;
     
-    if (!sessionId) {
-        res.status(400).send('Falta el sessionId');
+    if (!sessionToken) {
+        res.status(400).json({ error: 'Token de sesión requerido' });
         return;
     }
 
@@ -31,29 +30,48 @@ app.get('/events', (req, res) => {
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive'
     });
-
+    
     // Enviar un evento inicial para confirmar la conexión
     res.write('event: connected\ndata: {"status": "connected"}\n\n');
-
-    // Añadir cliente a la lista con su sessionId
+    
+    // Crear cliente
     const clientId = Date.now();
-    clients.push({
+    const newClient = {
         id: clientId,
         res,
-        sessionId
-    });
-
-    // Enviar datos existentes si hay alguno para esta sesión
-    if (sessionData[sessionId]) {
-        const dataStr = JSON.stringify(sessionData[sessionId]);
+        sessionToken
+    };
+    
+    // Añadir cliente a la sesión correspondiente
+    if (!sessionClients.has(sessionToken)) {
+        sessionClients.set(sessionToken, []);
+    }
+    sessionClients.get(sessionToken).push(newClient);
+    
+    console.log(`Cliente ${clientId} conectado a sesión ${sessionToken}`);
+    
+    // Enviar datos existentes de la sesión si hay alguno
+    const existingData = sessionData.get(sessionToken);
+    if (existingData && Object.keys(existingData).length > 0) {
+        const dataStr = JSON.stringify(existingData);
         res.write(`event: webhook-data\ndata: ${dataStr}\n\n`);
     }
-
+    
     // Eliminar cliente cuando se cierre la conexión
     req.on('close', () => {
-        const index = clients.findIndex(client => client.id === clientId);
-        if (index !== -1) {
-            clients.splice(index, 1);
+        console.log(`Cliente ${clientId} desconectado de sesión ${sessionToken}`);
+        const sessionClientList = sessionClients.get(sessionToken);
+        if (sessionClientList) {
+            const index = sessionClientList.findIndex(client => client.id === clientId);
+            if (index !== -1) {
+                sessionClientList.splice(index, 1);
+                // Si no quedan clientes en la sesión, eliminar la sesión
+                if (sessionClientList.length === 0) {
+                    sessionClients.delete(sessionToken);
+                    sessionData.delete(sessionToken);
+                    console.log(`Sesión ${sessionToken} eliminada`);
+                }
+            }
         }
     });
 });
@@ -75,18 +93,8 @@ app.post('/webhook', (req, res) => {
         // Parsear el JSON
         const data = JSON.parse(jsonString);
         
-        // Verificar que tengamos un sessionId
-        if (!data.sessionId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Falta el ID de sesión'
-            });
-        }
-        
         // Añadir campo "observations" a cada elemento si no existe
         for (const groupId in data) {
-            if (groupId === 'sessionId') continue; // Saltamos el sessionId
-            
             data[groupId].forEach(item => {
                 if (!item.hasOwnProperty('observations')) {
                     item.observations = "None";
@@ -94,18 +102,36 @@ app.post('/webhook', (req, res) => {
             });
         }
         
-        // Guardar los datos en la sesión correspondiente
-        sessionData[data.sessionId] = data;
+        // Determinar a qué sesión enviar los datos
+        // Por simplicidad, si no se especifica sesión, crear una nueva o usar la primera activa
+        let targetSessionToken = null;
         
-        // Notificar a todos los clientes conectados para esta sesión
-        sendEventToSession(data.sessionId, 'webhook-data', data);
+        // Buscar la primera sesión activa (en un escenario real, esto se haría de manera más específica)
+        for (const [sessionToken, clients] of sessionClients.entries()) {
+            if (clients.length > 0) {
+                targetSessionToken = sessionToken;
+                break;
+            }
+        }
+        
+        if (targetSessionToken) {
+            // Guardar los datos para la sesión específica
+            sessionData.set(targetSessionToken, data);
+            
+            // Notificar solo a los clientes de esta sesión
+            sendEventToSession(targetSessionToken, 'webhook-data', data);
+            
+            console.log(`Datos enviados a sesión ${targetSessionToken}`);
+        }
         
         // Enviar respuesta
         res.status(200).json({
             success: true,
             message: 'Datos recibidos y procesados correctamente',
+            sessionToken: targetSessionToken,
             data: data
         });
+        
     } catch (error) {
         console.error('Error al procesar el webhook:', error);
         res.status(400).json({
@@ -116,7 +142,7 @@ app.post('/webhook', (req, res) => {
     }
 });
 
-// Endpoint para recibir acciones (check/x)
+// Endpoint para recibir acciones (coherente/incoherente) con soporte de sesiones
 app.post('/action', (req, res) => {
     try {
         // Obtener el cuerpo de la solicitud
@@ -130,53 +156,47 @@ app.post('/action', (req, res) => {
             data = jsonString;
         }
         
-        // Verificar que tengamos un sessionId
-        if (!data.sessionId) {
+        const sessionToken = data.sessionToken;
+        
+        if (!sessionToken) {
             return res.status(400).json({
                 success: false,
-                message: 'Falta el ID de sesión'
+                message: 'Token de sesión requerido'
             });
         }
         
-        // Procesar la acción (en un entorno real, esto podría actualizar una base de datos)
-        console.log(`Acción recibida: ${data.color ? 'Rechazar' : 'Aprobar'} para grupo ${data.groupId}`);
+        // Procesar la acción para la sesión específica
+        console.log(`Acción recibida para sesión ${sessionToken}: ${data.color ? 'Incoherente' : 'Coherente'} para grupo ${data.groupId}`);
         
-        // Verificar que existan datos para esta sesión
-        if (!sessionData[data.sessionId]) {
-            return res.status(404).json({
-                success: false,
-                message: 'No se encontraron datos para esta sesión'
-            });
-        }
-        
-        // Obtener los datos de la sesión
-        const session = sessionData[data.sessionId];
-        
-        // Actualizar los datos
-        if (session[data.groupId]) {
-            const index = session[data.groupId].findIndex(item => 
+        // Actualizar los datos en memoria para la sesión específica
+        const sessionWebhookData = sessionData.get(sessionToken);
+        if (sessionWebhookData && sessionWebhookData[data.groupId]) {
+            const index = sessionWebhookData[data.groupId].findIndex(item => 
                 item.dateOfClass === data.dateOfClass && 
                 item.temaDado === data.temaDado
             );
             
             if (index !== -1) {
                 // Actualizar el estado según la acción
-                session[data.groupId][index].success = !data.color;
-                
+                sessionWebhookData[data.groupId][index].success = !data.color;
                 // Actualizar observaciones
-                session[data.groupId][index].observations = 
-                    data.color ? "Rechazado manualmente" : "Aprobado manualmente";
-                    
-                // Notificar a todos los clientes conectados sobre el cambio
-                sendEventToSession(data.sessionId, 'webhook-data', session);
+                sessionWebhookData[data.groupId][index].observations = 
+                    data.color ? "Marcado como incoherente" : "Marcado como coherente";
+                
+                // Actualizar los datos de la sesión
+                sessionData.set(sessionToken, sessionWebhookData);
+                
+                // Notificar solo a los clientes de esta sesión sobre el cambio
+                sendEventToSession(sessionToken, 'webhook-data', sessionWebhookData);
             }
         }
         
         // Enviar respuesta
         res.status(200).json({
             success: true,
-            message: `Acción ${data.color ? 'rechazar' : 'aprobar'} procesada correctamente`
+            message: `Acción ${data.color ? 'incoherente' : 'coherente'} procesada correctamente para sesión ${sessionToken}`
         });
+        
     } catch (error) {
         console.error('Error al procesar la acción:', error);
         res.status(400).json({
@@ -187,19 +207,41 @@ app.post('/action', (req, res) => {
     }
 });
 
-// Función para enviar eventos a clientes de una sesión específica
-function sendEventToSession(sessionId, eventName, data) {
-    clients
-        .filter(client => client.sessionId === sessionId)
-        .forEach(client => {
-            client.res.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+// Función para enviar eventos a todos los clientes de una sesión específica
+function sendEventToSession(sessionToken, eventName, data) {
+    const clients = sessionClients.get(sessionToken);
+    if (clients) {
+        clients.forEach(client => {
+            try {
+                client.res.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+            } catch (error) {
+                console.error(`Error al enviar evento a cliente ${client.id}:`, error);
+            }
         });
+    }
 }
+
+// Endpoint para obtener estadísticas de sesiones (opcional, para debugging)
+app.get('/sessions', (req, res) => {
+    const sessions = [];
+    for (const [sessionToken, clients] of sessionClients.entries()) {
+        sessions.push({
+            sessionToken,
+            clientCount: clients.length,
+            hasData: sessionData.has(sessionToken)
+        });
+    }
+    
+    res.json({
+        totalSessions: sessions.length,
+        sessions: sessions
+    });
+});
 
 // Iniciar el servidor
 app.listen(port, () => {
-    console.log(`Servidor webhook escuchando en el puerto ${port}`);
-    console.log(`Endpoint SSE disponible en http://localhost:${port}/events`);
+    console.log(`Servidor webhook con sesiones escuchando en el puerto ${port}`);
+    console.log(`Endpoint SSE disponible en http://localhost:${port}/events?token=SESSION_TOKEN`);
     console.log(`Endpoint webhook disponible en http://localhost:${port}/webhook`);
-    console.log(`Endpoint de acciones disponible en http://localhost:${port}/action`);
+    console.log(`Endpoint de estadísticas disponible en http://localhost:${port}/sessions`);
 });

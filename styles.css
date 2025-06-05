@@ -695,19 +695,47 @@ tr:hover {
     }
 }
 
-.badge {
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 0.9rem;
+
+/* Estilos para botones con texto más largo */
+.btn-check,
+.btn-x {
+    padding: 8px 12px; /* Aumentar padding horizontal */
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px; /* Ancho mínimo para acomodar el texto */
+    height: 36px;
+    transition: all 0.2s;
+    font-size: 0.85rem; /* Tamaño de fuente más pequeño */
+    font-weight: 500;
+    white-space: nowrap; /* Evitar que el texto se rompa */
 }
 
-.badge-coherent {
-  background-color: var(--success-color);
-  color: white;
+.btn-check i,
+.btn-x i {
+    margin-right: 5px; /* Reducir el margen del icono */
 }
 
-.badge-incoherent {
-  background-color: var(--error-color);
-  color: white;
+/* Ajustar el contenedor de botones para acomodar botones más anchos */
+.action-buttons {
+    display: flex;
+    gap: 8px; /* Reducir el gap entre botones */
+    justify-content: center;
+    flex-wrap: wrap; /* Permitir que los botones se ajusten en pantallas pequeñas */
+}
+
+/* Media query para pantallas más pequeñas */
+@media (max-width: 768px) {
+    .btn-check,
+    .btn-x {
+        min-width: 80px;
+        font-size: 0.75rem;
+        padding: 6px 8px;
+    }
+    
+    .action-buttons {
+        gap: 5px;
+    }
 }

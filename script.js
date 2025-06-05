@@ -10,6 +10,7 @@ let notificationCount = 0
 let eventSource = null
 // Añadir una variable global para almacenar el archivo de microdiseño
 let microdisenoFile = null
+let sessionToken = null;
 
 // Elementos del DOM
 const excelFileInput = document.getElementById("excelFile")
@@ -53,57 +54,89 @@ copyUrlBtn.addEventListener("click", copyWebhookUrl)
 
 // Inicializar conexión con el servidor de webhook
 initWebhookConnection()
-
+function generateSessionToken() {
+    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
 // Función para inicializar la conexión del webhook usando Server-Sent Events (SSE)
 function initWebhookConnection() {
-  // URL del servidor de webhook
-  const serverUrl = "https://proyectousa.onrender.com"
+    // Generar token de sesión único
+    sessionToken = generateSessionToken();
+    console.log('Token de sesión generado:', sessionToken);
+    
+    // URL del servidor de webhook
+    const serverUrl = "http://localhost:3000"; // Cambia esto a la URL de tu servidor
 
-  try {
-    // Crear una conexión SSE
-    eventSource = new EventSource(`${serverUrl}/events`)
+    try {
+        // Crear una conexión SSE con el token de sesión
+        eventSource = new EventSource(`${serverUrl}/events?token=${sessionToken}`);
 
-    // Manejar el evento de conexión abierta
-    eventSource.onopen = () => {
-      console.log("Conexión SSE establecida")
-      statusDot.classList.remove("offline")
-      statusDot.classList.add("online")
-      statusText.textContent = "Webhook conectado"
+        // Manejar el evento de conexión abierta
+        eventSource.onopen = () => {
+            console.log("Conexión SSE establecida");
+            statusDot.classList.remove("offline");
+            statusDot.classList.add("online");
+            statusText.textContent = "Webhook conectado";
+        };
+
+        // Manejar el evento de mensaje recibido
+        eventSource.addEventListener("webhook-data", (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                handleWebhookData(data);
+            } catch (error) {
+                console.error("Error al procesar los datos del webhook:", error);
+            }
+        });
+
+        // Manejar errores de conexión
+        eventSource.onerror = () => {
+            console.error("Error en la conexión SSE");
+            statusDot.classList.remove("online");
+            statusDot.classList.add("offline");
+            statusText.textContent = "Webhook desconectado";
+
+            // Intentar reconectar después de 5 segundos
+            setTimeout(() => {
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    initWebhookConnection();
+                }
+            }, 5000);
+        };
+    } catch (error) {
+        console.error("Error al inicializar la conexión SSE:", error);
+        statusDot.classList.remove("online");
+        statusDot.classList.add("offline");
+        statusText.textContent = "Error de conexión";
+
+        // Para fines de demostración, simular la recepción de datos después de 5 segundos
+        setTimeout(simulateWebhookData, 5000);
     }
+}
+function formatExcelDate(excelDate) {
+    if (!excelDate || isNaN(excelDate)) return excelDate;
+    
+    // Excel cuenta los días desde el 1 de enero de 1900
+    const excelStartDate = new Date(1900, 0, 1);
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const actualDate = new Date(excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay);
+    
+    // Formatear como DD/MM/YYYY
+    const day = actualDate.getDate().toString().padStart(2, '0');
+    const month = (actualDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = actualDate.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+}
 
-    // Manejar el evento de mensaje recibido
-    eventSource.addEventListener("webhook-data", (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        handleWebhookData(data)
-      } catch (error) {
-        console.error("Error al procesar los datos del webhook:", error)
-      }
-    })
-
-    // Manejar errores de conexión
-    eventSource.onerror = () => {
-      console.error("Error en la conexión SSE")
-      statusDot.classList.remove("online")
-      statusDot.classList.add("offline")
-      statusText.textContent = "Webhook desconectado"
-
-      // Intentar reconectar después de 5 segundos
-      setTimeout(() => {
-        if (eventSource.readyState === EventSource.CLOSED) {
-          initWebhookConnection()
-        }
-      }, 5000)
-    }
-  } catch (error) {
-    console.error("Error al inicializar la conexión SSE:", error)
-    statusDot.classList.remove("online")
-    statusDot.classList.add("offline")
-    statusText.textContent = "Error de conexión"
-
-    // Para fines de demostración, simular la recepción de datos después de 5 segundos
-    setTimeout(simulateWebhookData, 5000)
-  }
+function formatExcelTime(excelTime) {
+    if (!excelTime || isNaN(excelTime)) return excelTime;
+    
+    // Excel almacena las horas como fracciones de día
+    const totalMinutes = Math.round(excelTime * 24 * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
 // Función para simular la recepción de datos (solo para demostración)
@@ -319,97 +352,63 @@ function handleTeacherChange() {
 
 // Función para actualizar los resultados
 function updateResults() {
-  if (!selectedModule || !selectedTeacher) {
-    resultsSection.classList.add("hidden")
-    microdisenoSection.classList.add("hidden")
-    submitSection.classList.add("hidden")
-    return
-  }
+    if (!selectedModule || !selectedTeacher) {
+        resultsSection.classList.add("hidden");
+        microdisenoSection.classList.add("hidden");
+        submitSection.classList.add("hidden");
+        return;
+    }
 
-  // Filtrar datos según el módulo y docente seleccionados
-  const headers = excelData[0]
-  const moduleIndex = headers.indexOf("Módulo")
-  const teacherIndex = headers.indexOf("Docente")
-  
-  const filteredData = excelData
-    .slice(1)
-    .filter((row) => row[moduleIndex] === selectedModule && row[teacherIndex] === selectedTeacher)
+    // Filtrar datos según el módulo y docente seleccionados
+    const headers = excelData[0];
+    const moduleIndex = headers.indexOf("Módulo");
+    const teacherIndex = headers.indexOf("Docente");
 
-  // Mostrar resultados
-  resultsBody.innerHTML = ""
-  
-  if (filteredData.length === 0) {
-    const row = document.createElement("tr")
-    const cell = document.createElement("td")
-    cell.colSpan = 6 // Solo mostraremos 6 columnas en vez de 8
-    cell.textContent = "No se encontraron resultados para esta combinación de módulo y docente."
-    cell.style.textAlign = "center"
-    row.appendChild(cell)
-    resultsBody.appendChild(row)
-  } else {
-    filteredData.forEach((rowData) => {
-      const row = document.createElement("tr")
-      
-      // Módulo
-      const moduleCell = document.createElement("td")
-      moduleCell.textContent = rowData[headers.indexOf("Módulo")] || ""
-      row.appendChild(moduleCell)
-      
-      // Grupo
-      const groupCell = document.createElement("td")
-      groupCell.textContent = rowData[headers.indexOf("Grupo")] || ""
-      row.appendChild(groupCell)
-      
-      // Docente
-      const teacherCell = document.createElement("td")
-      teacherCell.textContent = rowData[headers.indexOf("Docente")] || ""
-      row.appendChild(teacherCell)
-      
-      // Fecha de Clase (formateada)
-      const dateCell = document.createElement("td")
-      dateCell.textContent = excelToDate(rowData[headers.indexOf("Fecha de Clase")] || "")
-      row.appendChild(dateCell)
-      
-      // Tema
-      const topicCell = document.createElement("td")
-      topicCell.textContent = rowData[headers.indexOf("Tema")] || ""
-      row.appendChild(topicCell)
-      
-      // Hora Ingreso (formateada)
-      const hourCell = document.createElement("td")
-      hourCell.textContent = excelToTime(rowData[headers.indexOf("Hora Ingreso")] || "")
-      row.appendChild(hourCell)
-      
-      resultsBody.appendChild(row)
-    })
-  }
+    const filteredData = excelData
+        .slice(1)
+        .filter((row) => row[moduleIndex] === selectedModule && row[teacherIndex] === selectedTeacher);
 
-  // Función para convertir número de Excel a fecha legible
-function excelToDate(excelDate) {
-  if (!excelDate) return "";
-  
-  // Las fechas de Excel comienzan desde el 1 de enero de 1900
-  const date = new Date((excelDate - 25569) * 86400 * 1000);
-  return date.toLocaleDateString('es-ES');
-}
+    // Mostrar resultados
+    resultsBody.innerHTML = "";
 
-// Función para convertir valor decimal de Excel a hora legible
-function excelToTime(excelTime) {
-  if (!excelTime) return "";
-  
-  const totalMinutes = Math.floor(excelTime * 1440); // 1440 minutos en un día
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-}
-  
-  // Mostrar secciones
-  resultsSection.classList.remove("hidden")
-  microdisenoSection.classList.remove("hidden")
-  submitSection.classList.remove("hidden")
-  
-  // Actualizar el indicador de pasos
-  updateStepIndicator(3)
+    if (filteredData.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 6; // Cambiado a 6 columnas (eliminamos las 2 últimas)
+        cell.textContent = "No se encontraron resultados para esta combinación de módulo y docente.";
+        cell.style.textAlign = "center";
+        row.appendChild(cell);
+        resultsBody.appendChild(row);
+    } else {
+        filteredData.forEach((rowData) => {
+            const row = document.createElement("tr");
+
+            // Solo mostrar las primeras 6 columnas (eliminamos Hrs. Clase y Hora Ingreso)
+            for (let i = 0; i < 6; i++) {
+                const cell = document.createElement("td");
+                let cellValue = rowData[i] || "";
+                
+                // Formatear fechas y horas según la columna
+                const columnName = headers[i];
+                if (columnName === "Fecha de Clase" || columnName === "Fecha Ingreso") {
+                    cellValue = formatExcelDate(cellValue);
+                }
+                
+                cell.textContent = cellValue;
+                row.appendChild(cell);
+            }
+
+            resultsBody.appendChild(row);
+        });
+    }
+
+    // Mostrar secciones
+    resultsSection.classList.remove("hidden");
+    microdisenoSection.classList.remove("hidden");
+    submitSection.classList.remove("hidden");
+
+    // Actualizar el indicador de pasos
+    updateStepIndicator(3);
 }
 async function extractPdfText(file) {
     const arrayBuffer = await file.arrayBuffer();
@@ -454,67 +453,52 @@ function updateSubmitButton() {
     updateStepIndicator(5)
   }
 }
-let sessionId = null
-function generateSessionId() {
-  // Para fines de demostración, generamos un token simple
-  // En producción podrías usar crypto.randomUUID() o algo similar
-  return 'sess-' + Math.random().toString(36).substr(2, 9)
-}
 
-// Generar un nuevo token de sesión al cargar la página
-sessionId = generateSessionId()
 // Modificar la función submitReport para incluir el contenido del microdiseño como string
 async function submitReport() {
-  row = 7
-  
-  if (!selectedModule || !selectedTeacher) {
-    showMessage('<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente', "error")
-    return
-  }
-  
-  if (!microdisenoFile) {
-    showMessage('<i class="fas fa-exclamation-triangle"></i> Debe subir el archivo de microdiseño', "error")
-    return
-  }
-  
-  showMessage('<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...', "success")
-  
-  try {
-    // Extraemos el texto del PDF
-    const textoExtraido = await extractPdfText(microdisenoFile)
-    
-    // Preparamos el payload con el texto legible
-    const payload = {
-      sessionId: sessionId,
-      modulo: selectedModule,
-      docente: selectedTeacher,
-      microdiseno: {
-        nombre: microdisenoFile.name,
-        tipo: microdisenoFile.type,
-        contenido: textoExtraido
-      }
+    row = 7
+    if (!selectedModule || !selectedTeacher) {
+      showMessage('<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente', "error");
+      return;
     }
-    
-    const res = await fetch("https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9",  {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(payload)
-    })
-    
-    if (!res.ok) throw new Error("Error en la respuesta del servidor")
-    
-    await res.text()
-    showMessage('<i class="fas fa-check-circle"></i> Reporte enviado correctamente', "success")
-    
-    steps.forEach(s => { 
-      s.classList.add("completed")
-      s.classList.remove("active")
-    })
-  } catch (err) {
-    console.error("Error en submitReport:", err)
-    showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' + err.message, "error")
+    if (!microdisenoFile) {
+      showMessage('<i class="fas fa-exclamation-triangle"></i> Debe subir el archivo de microdiseño', "error");
+      return;
+    }
+  
+    showMessage('<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...', "success");
+  
+    try {
+      // Extraemos el texto del PDF
+      const textoExtraido = await extractPdfText(microdisenoFile);
+      console.log("Texto extraído del PDF:", textoExtraido);
+  
+      // Preparamos el payload con el texto legible
+      const payload = {
+        modulo: selectedModule,
+        docente: selectedTeacher,
+        microdiseno: {
+          nombre: microdisenoFile.name,
+          tipo: microdisenoFile.type,
+          contenido: textoExtraido    // <-- aquí va el texto legible
+        }
+      };
+  
+      const res = await fetch("https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9", {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error("Error en la respuesta del servidor");
+  
+      await res.text();
+      showMessage('<i class="fas fa-check-circle"></i> Reporte enviado correctamente', "success");
+      steps.forEach(s => { s.classList.add("completed"); s.classList.remove("active"); });
+    } catch (err) {
+      console.error("Error en submitReport:", err);
+      showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' + err.message, "error");
+    }
   }
-}
 // Función para mostrar mensajes
 function showMessage(text, type) {
   messageDiv.innerHTML = text
@@ -531,107 +515,133 @@ function showMessage(text, type) {
 
 // Función para mostrar los datos del webhook en la tabla
 function displayWebhookData(data) {
-  webhookTableBody.innerHTML = ""
-  
-  // Iterar sobre cada grupo en los datos
-  for (const groupId in data) {
-    const groupData = data[groupId]
-    
-    // Iterar sobre cada entrada en el grupo
-    groupData.forEach((entry) => {
-      const row = document.createElement("tr")
-      
-      // Aplicar clase según el estado de éxito
-      if (entry.success) {
-        row.classList.add("success-row")
-      } else {
-        row.classList.add("error-row")
-      }
-      
-      // Grupo
-      const groupCell = document.createElement("td")
-      groupCell.textContent = groupId
-      row.appendChild(groupCell)
-      
-      // Fecha de Clase
-      const dateCell = document.createElement("td")
-      dateCell.textContent = entry.dateOfClass || ""
-      row.appendChild(dateCell)
-      
-      // Tema Dado
-      const temaDadoCell = document.createElement("td")
-      temaDadoCell.textContent = entry.temaDado || ""
-      row.appendChild(temaDadoCell)
-      
-      // Tema Esperado
-      const temaEsperadoCell = document.createElement("td")
-      temaEsperadoCell.textContent = entry.temaEsperado || ""
-      row.appendChild(temaEsperadoCell)
-      
-      // Semana
-      const weekCell = document.createElement("td")
-      weekCell.textContent = entry.week || ""
-      row.appendChild(weekCell)
-      
-      // Coherencia (reemplaza a Estado)
-      const coherenceCell = document.createElement("td")
-      if (entry.success) {
-        coherenceCell.innerHTML = '<span class="badge badge-coherent">Coherente</span>'
-      } else {
-        coherenceCell.innerHTML = '<span class="badge badge-incoherent">Incoherente</span>'
-      }
-      row.appendChild(coherenceCell)
-      
-      // Agregar la fila a la tabla
-      webhookTableBody.appendChild(row)
-    })
-  }
+    webhookTableBody.innerHTML = "";
+
+    // Iterar sobre cada grupo en los datos
+    for (const groupId in data) {
+        const groupData = data[groupId];
+
+        // Iterar sobre cada entrada en el grupo
+        groupData.forEach((entry) => {
+            const row = document.createElement("tr");
+
+            // Aplicar clase según el estado de éxito
+            if (entry.success) {
+                row.classList.add("success-row");
+            } else {
+                row.classList.add("error-row");
+            }
+
+            // Crear celdas para cada columna
+            // Grupo
+            const groupCell = document.createElement("td");
+            groupCell.textContent = groupId;
+            row.appendChild(groupCell);
+
+            // Fecha de Clase
+            const dateCell = document.createElement("td");
+            dateCell.textContent = entry.dateOfClass || "";
+            row.appendChild(dateCell);
+
+            // Tema Dado
+            const temaDadoCell = document.createElement("td");
+            temaDadoCell.textContent = entry.temaDado || "";
+            row.appendChild(temaDadoCell);
+
+            // Tema Esperado
+            const temaEsperadoCell = document.createElement("td");
+            temaEsperadoCell.textContent = entry.temaEsperado || "";
+            row.appendChild(temaEsperadoCell);
+
+            // Semana
+            const weekCell = document.createElement("td");
+            weekCell.textContent = entry.week || "";
+            row.appendChild(weekCell);
+
+            // Acciones (botones de Coherente e Incoherente)
+            const actionsCell = document.createElement("td");
+            const actionsDiv = document.createElement("div");
+            actionsDiv.className = "action-buttons";
+
+            // Botón de Coherente (antes era check)
+            const coherentBtn = document.createElement("button");
+            coherentBtn.className = "btn-check";
+            coherentBtn.innerHTML = '<i class="fas fa-check"></i> Coherente';
+            coherentBtn.onclick = () => {
+                sendActionRequest(groupId, entry, false);
+                row.remove();
+            };
+
+            actionsDiv.appendChild(coherentBtn);
+
+            // Botón de Incoherente (antes era x)
+            const incoherentBtn = document.createElement("button");
+            incoherentBtn.className = "btn-x";
+            incoherentBtn.innerHTML = '<i class="fas fa-times"></i> Incoherente';
+            incoherentBtn.onclick = () => {
+                sendActionRequest(groupId, entry, true);
+                row.remove();
+            };
+            
+            actionsDiv.appendChild(incoherentBtn);
+
+            actionsCell.appendChild(actionsDiv);
+            row.appendChild(actionsCell);
+
+            // Agregar la fila a la tabla
+            webhookTableBody.appendChild(row);
+        });
+    }
 }
 
 // Función para enviar la solicitud de acción (check o x)
 function sendActionRequest(groupId, entry, color) {
-  // Crear objeto con los datos a enviar
-  const data = {
-    ...entry,
-    groupId: groupId,
-    color: color,
-    modulo: selectedModule,
-    docente: selectedTeacher,
-    row: row++,
-    sessionId: sessionId // Añadimos el token de sesión
-  }
-  
-  // Mostrar mensaje de carga
-  showMessage('<i class="fas fa-spinner fa-spin"></i> Enviando acción...', "success")
-  
-  // AQUÍ ES DONDE SE DEBE COLOCAR LA URL PARA LA SOLICITUD POST
-  const postUrl = "https://hook.us2.make.com/m4sw3hygyr8rh33ishohc6f1l2c6rim1" 
-  
-  // Enviar datos al webhook
-  fetch(postUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(data)
-  })
-  .then((response) => {
-    if (!response.ok) {
-      throw new Error("Error en la respuesta del servidor")
-    }
-    return response.text()
-  })
-  .then((result) => {
-    showMessage(
-      `<i class="fas fa-check-circle"></i> Acción ${color ? "rechazar" : "aprobar"} enviada correctamente`,
-      "success"
-    )
-  })
-  .catch((error) => {
-    console.error("Error al enviar la acción:", error)
-    showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar la acción: ' + error.message, "error")
-  })
+    // Crear objeto con los datos a enviar, incluyendo el token de sesión
+    const data = {
+        ...entry,
+        groupId: groupId,
+        color: color,
+        modulo: selectedModule,
+        docente: selectedTeacher,
+        row: row++,
+        sessionToken: sessionToken // Incluir el token de sesión
+    };
+
+    // Mostrar mensaje de carga
+    showMessage('<i class="fas fa-spinner fa-spin"></i> Enviando acción...', "success");
+
+    // URL para la solicitud POST
+    const postUrl = "https://hook.us2.make.com/m4sw3hygyr8rh33ishohc6f1l2c6rim1";
+
+    // Enviar datos al webhook
+    fetch(postUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Error en la respuesta del servidor");
+            }
+            return response.text();
+        })
+        .then((result) => {
+            showMessage(
+                `<i class="fas fa-check-circle"></i> Acción ${color ? "incoherente" : "coherente"} enviada correctamente`,
+                "success"
+            );
+        })
+        .catch((error) => {
+            console.error("Error al enviar la acción:", error);
+            showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar la acción: ' + error.message, "error");
+        });
 }
+
+
+
+
 // Función para mostrar el modal con texto completo
 function showTextModal(title, text) {
   modalTitle.textContent = title
