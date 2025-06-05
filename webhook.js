@@ -81,7 +81,7 @@ app.post('/webhook', (req, res) => {
     try {
         // Obtener el cuerpo de la solicitud como string
         let jsonString = req.body;
-        console.log('Datos recibidos en el webhook:', req.query.token);
+        // console.log('Datos recibidos en el webhook:', );
         
         // Eliminar los delimitadores ```json y ``` si existen
         if (jsonString.startsWith('```json')) {
@@ -105,7 +105,7 @@ app.post('/webhook', (req, res) => {
         
         // Determinar a qué sesión enviar los datos
         // Por simplicidad, si no se especifica sesión, crear una nueva o usar la primera activa
-        let targetSessionToken = data.sessionToken;
+        let targetSessionToken = req.query.token;
         
         // // Buscar la primera sesión activa (en un escenario real, esto se haría de manera más específica)
         // for (const [sessionToken, clients] of sessionClients.entries()) {
