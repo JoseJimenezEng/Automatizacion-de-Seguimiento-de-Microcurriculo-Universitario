@@ -64,7 +64,7 @@ function initWebhookConnection() {
     console.log('Token de sesión generado:', sessionToken);
     
     // URL del servidor de webhook
-    const serverUrl = "http://localhost:3000"; // Cambia esto a la URL de tu servidor
+    const serverUrl = "https://proyectousa.onrender.com"; // Cambia esto a la URL de tu servidor
 
     try {
         // Crear una conexión SSE con el token de sesión
