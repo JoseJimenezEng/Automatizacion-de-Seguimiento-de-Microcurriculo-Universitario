@@ -104,15 +104,15 @@ app.post('/webhook', (req, res) => {
         
         // Determinar a qué sesión enviar los datos
         // Por simplicidad, si no se especifica sesión, crear una nueva o usar la primera activa
-        let targetSessionToken = null;
+        let targetSessionToken = data.sessionToken;
         
-        // Buscar la primera sesión activa (en un escenario real, esto se haría de manera más específica)
-        for (const [sessionToken, clients] of sessionClients.entries()) {
-            if (clients.length > 0) {
-                targetSessionToken = sessionToken;
-                break;
-            }
-        }
+        // // Buscar la primera sesión activa (en un escenario real, esto se haría de manera más específica)
+        // for (const [sessionToken, clients] of sessionClients.entries()) {
+        //     if (clients.length > 0) {
+        //         targetSessionToken = sessionToken;
+        //         break;
+        //     }
+        // }
         
         if (targetSessionToken) {
             // Guardar los datos para la sesión específica
