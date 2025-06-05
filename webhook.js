@@ -81,7 +81,7 @@ app.post('/webhook', (req, res) => {
     try {
         // Obtener el cuerpo de la solicitud como string
         let jsonString = req.body;
-        console.log('Datos recibidos en el webhook:', jsonString);
+        console.log('Datos recibidos en el webhook:', req.query);
         
         // Eliminar los delimitadores ```json y ``` si existen
         if (jsonString.startsWith('```json')) {
