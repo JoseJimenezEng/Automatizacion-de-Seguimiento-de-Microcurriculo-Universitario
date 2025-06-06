@@ -11,12 +11,14 @@ let eventSource = null;
 let microdisenoFile = null;
 let sessionToken = null;
 
+// Usuarios válidos para la credencial
+const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian"];
+
 // PEDIR TOKEN AL USUARIO ANTES DE CARGAR LA PÁGINA
 window.addEventListener("DOMContentLoaded", () => {
-  sessionToken = prompt("Por favor, ingresa tu token de sesión:");
-  if (!sessionToken) {
-    alert("Debes ingresar un token para continuar.");
-    // Opcional: puedes recargar la página o deshabilitar funcionalidades
+  sessionToken = prompt("Por favor, ingresa tu usuario (Valeria, Marlene, Juliana, Cristian):");
+  if (!sessionToken || !validUsers.includes(sessionToken.trim())) {
+    alert("Credencial inválida. Debes ingresar uno de los siguientes usuarios:\n" + validUsers.join(", "));
     location.reload();
   } else {
     initWebhookConnection();
@@ -423,7 +425,7 @@ function updateResults() {
 }
 
 // —————————————————————————————————————————
-// Nuevo: función para extraer texto de .docx con Mammoth.js
+// Función para extraer texto de .docx con Mammoth.js
 // Asegúrate de haber incluido en tu HTML:
 // <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 async function extractDocxText(file) {
@@ -432,7 +434,23 @@ async function extractDocxText(file) {
   return result.value; // Texto plano extraído
 }
 
-// Función para manejar la carga del archivo de microdiseño (.docx)
+// Función para extraer texto de .pdf con pdfjsLib
+// Asegúrate de haber incluido en tu HTML:
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map((item) => item.str);
+    fullText += strings.join(" ") + "\n\n";
+  }
+  return fullText;
+}
+
+// Función para manejar la carga del archivo de microdiseño (.pdf o .docx)
 async function handleMicrodisenoUpload(event) {
   event.preventDefault();
   const file = event.target.files[0];
@@ -447,13 +465,33 @@ async function handleMicrodisenoUpload(event) {
 
   // Extraemos y mostramos el texto en consola (o en un modal si prefieres)
   try {
-    const texto = await extractDocxText(file);
-    console.log("Texto extraído del DOCX:", texto);
+    let texto;
+    if (file.type === "application/pdf") {
+      texto = await extractPdfText(file);
+    } else if (
+      file.type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.name.toLowerCase().endsWith(".docx")
+    ) {
+      texto = await extractDocxText(file);
+    } else {
+      showMessage('<i class="fas fa-exclamation-circle"></i> Formato no soportado. Use PDF o DOCX.', "error");
+      microdisenoUploaded = false;
+      microdisenoFile = null;
+      microdisenoFileName.textContent = "";
+      microdisenoFileElement.value = "";
+      return;
+    }
+    console.log("Texto extraído:", texto);
     // Si deseas mostrarlo en un modal:
     // showTextModal("Vista previa del microdiseño", texto);
   } catch (err) {
-    console.error("Error al extraer texto del DOCX:", err);
-    showMessage('<i class="fas fa-exclamation-circle"></i> Error al procesar el archivo de Word', "error");
+    console.error("Error al extraer texto del archivo:", err);
+    showMessage('<i class="fas fa-exclamation-circle"></i> Error al procesar el archivo', "error");
+    microdisenoUploaded = false;
+    microdisenoFile = null;
+    microdisenoFileName.textContent = "";
+    microdisenoFileElement.value = "";
   }
 }
 
@@ -466,7 +504,7 @@ function updateSubmitButton() {
   }
 }
 
-// Función para enviar el reporte (incluye texto extraído del .docx)
+// Función para enviar el reporte (incluye texto extraído del .pdf o .docx)
 async function submitReport() {
   if (!selectedModule || !selectedTeacher) {
     showMessage('<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente', "error");
@@ -480,19 +518,25 @@ async function submitReport() {
   showMessage('<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...', "success");
 
   try {
-    // Extraemos el texto del Word (.docx)
-    const textoExtraido = await extractDocxText(microdisenoFile);
-    console.log("Texto extraído del DOCX:", textoExtraido);
+    // Extraemos el texto del Word o PDF
+    let textoExtraido;
+    if (microdisenoFile.type === "application/pdf") {
+      textoExtraido = await extractPdfText(microdisenoFile);
+    } else {
+      textoExtraido = await extractDocxText(microdisenoFile);
+    }
 
-    // Preparamos el payload con el texto legible
+    console.log("Texto extraído para envío:", textoExtraido);
+
+    // Preparamos el payload
     const payload = {
       modulo: selectedModule,
       docente: selectedTeacher,
-      sessionToken: sessionToken, // Incluir el token de sesión
+      sessionToken: sessionToken,
       microdiseno: {
         nombre: microdisenoFile.name,
         tipo: microdisenoFile.type,
-        contenido: textoExtraido // <-- texto de Word aquí
+        contenido: textoExtraido
       }
     };
 
@@ -505,15 +549,27 @@ async function submitReport() {
 
     await res.text();
     showMessage('<i class="fas fa-check-circle"></i> Reporte enviado correctamente', "success");
-    steps.forEach((s) => {
-      s.classList.add("completed");
-      s.classList.remove("active");
-    });
+
+    // ---------- AQUÍ LIMPIAMOS EL ARCHIVO SUBIDO ----------
+    microdisenoFile = null;
+    microdisenoUploaded = false;
+    microdisenoFileElement.value = "";       // borrar selección en el input
+    microdisenoFileName.textContent = "";     // borrar nombre mostrado
+
+    // Deshabilitar nuevamente el botón de envío hasta que suban otro archivo
+    submitButton.disabled = true;
+
+    // Mantener visible la sección, sin ocultarla
+    // (no hacemos: microdisenoSection.classList.add("hidden"); ni submitSection.classList.add("hidden");)
+
+    // Opcional: actualizar el indicador de pasos si quieres
+    updateStepIndicator(4);
   } catch (err) {
     console.error("Error en submitReport:", err);
     showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' + err.message, "error");
   }
 }
+
 
 // Función para mostrar mensajes en pantalla
 function showMessage(text, type) {
@@ -617,7 +673,7 @@ function sendActionRequest(groupId, entry, color) {
     color: color,
     modulo: selectedModule,
     docente: selectedTeacher,
-    sessionToken: sessionToken // Incluir el token de sesión
+    sessionToken: sessionToken, // Incluir el token de sesión
   };
 
   // Mostrar mensaje de carga
