@@ -18,6 +18,9 @@ window.addEventListener("DOMContentLoaded", () => {
     alert("Debes ingresar un token para continuar.")
     // Opcional: puedes recargar la página o deshabilitar funcionalidades
     // location.reload()
+  }else{
+    initWebhookConnection()
+
   }
 })
 
@@ -62,7 +65,6 @@ closeModalX.addEventListener("click", closeModal)
 copyUrlBtn.addEventListener("click", copyWebhookUrl)
 
 // Inicializar conexión con el servidor de webhook
-initWebhookConnection()
 
 // Función para inicializar la conexión del webhook usando Server-Sent Events (SSE)
 function initWebhookConnection() {
