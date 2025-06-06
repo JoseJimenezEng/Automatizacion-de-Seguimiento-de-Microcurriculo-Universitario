@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- PDF.js -->
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.min.js"></script>
+    <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+
     <script>
         // Dónde buscar la librería
         pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -18,10 +20,11 @@
 </head>
 
 <body>
-    
+
     <header class="header">
         <div class="header-content">
-            <img src="https://www.usergioarboleda.edu.co/sergiointeractivo/wp-content/uploads/2020/03/kisspng-sergio-arboleda-university-logo-business-school-encuentro-colombiano-de-combinatoria-ecco-2-18-5b778e55a3c529.9334156515345618776708.png" alt="Logo Universidad Sergio Arboleda" class="logo">
+            <img src="https://www.usergioarboleda.edu.co/sergiointeractivo/wp-content/uploads/2020/03/kisspng-sergio-arboleda-university-logo-business-school-encuentro-colombiano-de-combinatoria-ecco-2-18-5b778e55a3c529.9334156515345618776708.png"
+                alt="Logo Universidad Sergio Arboleda" class="logo">
             <div class="header-title">
                 <h2>Facultad de Derecho</h2>
                 <p>Sistema de Gestión Académica</p>
@@ -87,31 +90,35 @@
             </div>
         </div>
 
-       <div id="resultsSection" class="section hidden">
-    <h2 class="section-title"><i class="fas fa-table"></i> Paso 3: Resultados</h2>
-    <div class="results">
-        <table id="resultsTable">
-            <thead>
-                <tr>
-                    <th>Módulo</th>
-                    <th>Grupo</th>
-                    <th>Docente</th>
-                    <th>Fecha de Clase</th>
-                    <th>Tema</th>
-                    <th>Fecha Ingreso</th>
-                </tr>
-            </thead>
-            <tbody id="resultsBody"></tbody>
-        </table>
-    </div>
-</div>
+        <div id="resultsSection" class="section hidden">
+            <h2 class="section-title"><i class="fas fa-table"></i> Paso 3: Resultados</h2>
+            <div class="results">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Módulo</th>
+                            <th>Grupo</th>
+                            <th>Docente</th>
+                            <th>Fecha de Clase</th>
+                            <th>Tema</th>
+                            <th>Fecha Ingreso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
 
 
         <div id="microdisenoSection" class="section hidden">
             <h2 class="section-title"><i class="fas fa-file-pdf"></i> Paso 4: Subir Microdiseño</h2>
             <div class="file-upload">
                 <div class="file-input-container">
-                    <input type="file" id="microdisenoFile" class="file-input" accept=".pdf, .doc, .docx">
+                    <!-- Antes era: <input type="file" id="microdisenoFile" accept=".pdf" /> -->
+                    <input type="file" id="microdisenoFile"
+                        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                    <span id="microdisenoFileName"></span>
+
                 </div>
                 <div id="microdisenoFileName" class="file-name"></div>
             </div>
@@ -144,23 +151,23 @@
             </div>
 
             <div id="webhookResults" class="webhook-results hidden">
-    <h3>Resultados del Análisis:</h3>
-    <div class="results">
-        <table id="webhookTable" class="webhook-table">
-            <thead>
-                <tr>
-                    <th>Grupo</th>
-                    <th>Fecha de Clase</th>
-                    <th>Tema Dado</th>
-                    <th>Tema Esperado</th>
-                    <th>Semana</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="webhookTableBody"></tbody>
-        </table>
-    </div>
-</div>
+                <h3>Resultados del Análisis:</h3>
+                <div class="results">
+                    <table id="webhookTable" class="webhook-table">
+                        <thead>
+                            <tr>
+                                <th>Grupo</th>
+                                <th>Fecha de Clase</th>
+                                <th>Tema Dado</th>
+                                <th>Tema Esperado</th>
+                                <th>Semana</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="webhookTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -178,7 +185,8 @@
 
     <footer class="footer">
         <div class="footer-content">
-            <img src="https://www.usergioarboleda.edu.co/sergiointeractivo/wp-content/uploads/2020/03/kisspng-sergio-arboleda-university-logo-business-school-encuentro-colombiano-de-combinatoria-ecco-2-18-5b778e55a3c529.9334156515345618776708.png" alt="Logo Universidad Sergio Arboleda" class="footer-logo">
+            <img src="https://www.usergioarboleda.edu.co/sergiointeractivo/wp-content/uploads/2020/03/kisspng-sergio-arboleda-university-logo-business-school-encuentro-colombiano-de-combinatoria-ecco-2-18-5b778e55a3c529.9334156515345618776708.png"
+                alt="Logo Universidad Sergio Arboleda" class="footer-logo">
             <p>© 2025 Universidad Sergio Arboleda - Todos los derechos reservados</p>
             <p>Sistema de Automatización de Proceso de Reporte de Contenidos</p>
         </div>
