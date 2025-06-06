@@ -20,6 +20,18 @@
 </head>
 
 <body>
+    <!-- Modal de login de sesión -->
+<div id="tokenModal" class="modal">
+  <div class="modal-content token-modal-content">
+    <h3 class="modal-title">Ingrese su usuario</h3>
+    <p>Usuarios permitidos: Valeria, Marlene, Juliana, Cristian.</p>
+    <input type="text" id="tokenInput" class="token-input" placeholder="Escriba su usuario aquí" />
+    <div class="modal-footer">
+      <button id="tokenSubmit" class="btn"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+    </div>
+  </div>
+</div>
+
 
     <header class="header">
         <div class="header-content">
@@ -111,18 +123,24 @@
 
 
         <div id="microdisenoSection" class="section hidden">
-            <h2 class="section-title"><i class="fas fa-file-pdf"></i> Paso 4: Subir Microdiseño</h2>
-            <div class="file-upload">
-                <div class="file-input-container">
-                    <!-- Antes era: <input type="file" id="microdisenoFile" accept=".pdf" /> -->
-                    <input type="file" id="microdisenoFile"
-                        accept=".pdf, .docx, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-                    <span id="microdisenoFileName"></span>
+  <h2 class="section-title">
+    <i class="fas fa-file-upload"></i> Paso 4: Subir Microdiseño
+  </h2>
+  <div class="microdiseno-upload">
+    <label for="microdisenoFile" class="microdiseno-label">
+      <i class="fas fa-file"></i> Seleccionar el Microdiseño PDF/DOCX
+    </label>
+    <input
+      type="file"
+      id="microdisenoFile"
+      class="microdiseno-input"
+      accept=".pdf, .docx, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    />
+    <span id="microdisenoFileName" class="file-name"></span>
+  </div>
+</div>
 
-                </div>
-                <div id="microdisenoFileName" class="file-name"></div>
-            </div>
-        </div>
+
 
         <div id="submitSection" class="section hidden">
             <h2 class="section-title"><i class="fas fa-paper-plane"></i> Paso 5: Enviar Reporte</h2>

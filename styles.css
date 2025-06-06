@@ -739,3 +739,106 @@ tr:hover {
         gap: 5px;
     }
 }
+
+/* Modal personalizado para ingreso de sessionToken */
+.token-modal-content {
+  max-width: 400px;
+  width: 90%;
+  padding: 30px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+#tokenModal {
+  display: flex;               /* colocar en el centro */
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.6);
+  z-index: 2000;
+}
+
+.token-modal-content .modal-title {
+  margin-bottom: 15px;
+  color: var(--primary-color);
+  font-size: 1.5rem;
+}
+
+.token-input {
+  width: 100%;
+  padding: 12px;
+  margin: 15px 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.token-input:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 2px rgba(200,16,46,0.2);
+}
+
+#tokenSubmit {
+  background-color: var(--secondary-color);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgba(200,16,46,0.2);
+}
+
+#tokenSubmit:hover {
+  background-color: #a50d26;
+  transform: translateY(-1px);
+}
+
+#tokenSubmit:active {
+  transform: translateY(0);
+}
+
+/* Contenedor para subir microdiseño, sin botón extra */
+.microdiseno-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  border: 2px dashed var(--secondary-color);
+  border-radius: 8px;
+  background-color: rgba(200, 16, 46, 0.05);
+}
+
+/* Etiqueta estilizada que abre el file-input */
+.microdiseno-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--primary-color);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.microdiseno-label:hover {
+  background-color: #001a3d;
+}
+
+/* Input real oculto */
+.microdiseno-input {
+  display: none;
+}
+
+/* Nombre de archivo debajo del selector */
+.microdiseno-upload .file-name {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  font-style: italic;
+  text-align: center;
+  word-break: break-word;
+  max-width: 80%;
+}

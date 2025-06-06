@@ -7,22 +7,33 @@ let currentStep = 1;
 let webhookData = null;
 let notificationCount = 0;
 let eventSource = null;
-// Añadir una variable global para almacenar el archivo de microdiseno
+// Añadir una variable global para almacenar el archivo de microdiseño
 let microdisenoFile = null;
 let sessionToken = null;
+
+// Para reenviar a Make SOLO UNA VEZ
+let resendAttempted = false;
 
 // Usuarios válidos para la credencial
 const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian"];
 
 // PEDIR TOKEN AL USUARIO ANTES DE CARGAR LA PÁGINA
+// Mostrar el modal al cargar
 window.addEventListener("DOMContentLoaded", () => {
-  sessionToken = prompt("Por favor, ingresa tu usuario (Valeria, Marlene, Juliana, Cristian):");
-  if (!sessionToken || !validUsers.includes(sessionToken.trim())) {
-    alert("Credencial inválida. Debes ingresar uno de los siguientes usuarios:\n" + validUsers.join(", "));
-    location.reload();
-  } else {
-    initWebhookConnection();
+  document.getElementById("tokenModal").style.display = "flex";
+});
+
+// Al hacer clic en Entrar
+document.getElementById("tokenSubmit").addEventListener("click", () => {
+  const input = document.getElementById("tokenInput").value.trim();
+  if (!validUsers.includes(input)) {
+    alert("Credencial inválida. Use: " + validUsers.join(", "));
+    return;
   }
+  sessionToken = input;
+  // ocultar modal y continuar
+  document.getElementById("tokenModal").style.display = "none";
+  initWebhookConnection();
 });
 
 // Elementos del DOM
@@ -76,11 +87,13 @@ function initWebhookConnection() {
   }
 
   // URL del servidor de webhook
-  const serverUrl = "https://proyectousa.onrender.com"; // Cambia esto a la URL de tu servidor
+  const serverUrl = "https://proyectousa.onrender.com";
 
   try {
     // Crear una conexión SSE con el token de sesión proporcionado por el usuario
-    eventSource = new EventSource(`${serverUrl}/events?token=${encodeURIComponent(sessionToken)}`);
+    eventSource = new EventSource(
+      `${serverUrl}/events?token=${encodeURIComponent(sessionToken)}`
+    );
 
     // Manejar el evento de conexión abierta
     eventSource.onopen = () => {
@@ -131,7 +144,9 @@ function formatExcelDate(excelDate) {
   // Excel cuenta los días desde el 1 de enero de 1900
   const excelStartDate = new Date(1900, 0, 1);
   const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  const actualDate = new Date(excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay);
+  const actualDate = new Date(
+    excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay
+  );
 
   // Formatear como DD/MM/YYYY
   const day = actualDate.getDate().toString().padStart(2, "0");
@@ -149,7 +164,8 @@ function formatExcelTime(excelTime) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  return `${hours.toString().padStart(2, "0")}:${minutes.n
+.toString().padStart(2, "0")}`;
 }
 
 // Función para simular la recepción de datos (solo para demostración)
@@ -160,7 +176,8 @@ function simulateWebhookData() {
       {
         temaDado:
           "Presentación del Micro currículo, socialización Tema: Introducción a la Historia de la Filosofía del Derecho Concepto – utilidad- objeto -relación con otras ciencias",
-        temaEsperado: "Bienvenida al curso y presentación de la clase y presentación del contenido programático",
+        temaEsperado:
+          "Bienvenida al curso y presentación de la clase y presentación del contenido programático",
         success: true,
         week: "02/06/2025 - 02/07/2025",
         dateOfClass: "2/6/2025",
@@ -275,7 +292,9 @@ function handleExcelUpload(event) {
         "Hrs. Clase",
         "Hora Ingreso",
       ];
-      const hasExpectedFormat = expectedHeaders.every((header) => headers.includes(header));
+      const hasExpectedFormat = expectedHeaders.every((header) =>
+        headers.includes(header)
+      );
 
       if (!hasExpectedFormat) {
         showMessage("El formato del archivo no es el esperado", "error");
@@ -289,7 +308,10 @@ function handleExcelUpload(event) {
       updateStepIndicator(2);
     } catch (error) {
       console.error("Error al procesar el archivo:", error);
-      showMessage("Error al procesar el archivo. Asegúrese de que sea un archivo Excel válido.", "error");
+      showMessage(
+        "Error al procesar el archivo. Asegúrese de que sea un archivo Excel válido.",
+        "error"
+      );
     }
   };
 
@@ -379,7 +401,10 @@ function updateResults() {
 
   const filteredData = excelData
     .slice(1)
-    .filter((row) => row[moduleIndex] === selectedModule && row[teacherIndex] === selectedTeacher);
+    .filter(
+      (row) =>
+        row[moduleIndex] === selectedModule && row[teacherIndex] === selectedTeacher
+    );
 
   // Mostrar resultados
   resultsBody.innerHTML = "";
@@ -388,7 +413,8 @@ function updateResults() {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 6; // Cambiado a 6 columnas (eliminamos las 2 últimas)
-    cell.textContent = "No se encontraron resultados para esta combinación de módulo y docente.";
+    cell.textContent =
+      "No se encontraron resultados para esta combinación de módulo y docente.";
     cell.style.textAlign = "center";
     row.appendChild(cell);
     resultsBody.appendChild(row);
@@ -475,7 +501,10 @@ async function handleMicrodisenoUpload(event) {
     ) {
       texto = await extractDocxText(file);
     } else {
-      showMessage('<i class="fas fa-exclamation-circle"></i> Formato no soportado. Use PDF o DOCX.', "error");
+      showMessage(
+        '<i class="fas fa-exclamation-circle"></i> Formato no soportado. Use PDF o DOCX.',
+        "error"
+      );
       microdisenoUploaded = false;
       microdisenoFile = null;
       microdisenoFileName.textContent = "";
@@ -507,15 +536,24 @@ function updateSubmitButton() {
 // Función para enviar el reporte (incluye texto extraído del .pdf o .docx)
 async function submitReport() {
   if (!selectedModule || !selectedTeacher) {
-    showMessage('<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente', "error");
+    showMessage(
+      '<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente',
+      "error"
+    );
     return;
   }
   if (!microdisenoFile) {
-    showMessage('<i class="fas fa-exclamation-triangle"></i> Debe subir el archivo de microdiseño', "error");
+    showMessage(
+      '<i class="fas fa-exclamation-triangle"></i> Debe subir el archivo de microdiseño',
+      "error"
+    );
     return;
   }
 
-  showMessage('<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...', "success");
+  showMessage(
+    '<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...',
+    "success"
+  );
 
   try {
     // Extraemos el texto del Word o PDF
@@ -536,40 +574,46 @@ async function submitReport() {
       microdiseno: {
         nombre: microdisenoFile.name,
         tipo: microdisenoFile.type,
-        contenido: textoExtraido
-      }
+        contenido: textoExtraido,
+      },
     };
 
-    const res = await fetch("https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9", {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(payload)
-    });
+    const res = await fetch(
+      "https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify(payload),
+      }
+    );
     if (!res.ok) throw new Error("Error en la respuesta del servidor");
 
     await res.text();
-    showMessage('<i class="fas fa-check-circle"></i> Reporte enviado correctamente', "success");
+    showMessage(
+      '<i class="fas fa-check-circle"></i> Reporte enviado correctamente',
+      "success"
+    );
 
     // ---------- AQUÍ LIMPIAMOS EL ARCHIVO SUBIDO ----------
     microdisenoFile = null;
     microdisenoUploaded = false;
-    microdisenoFileElement.value = "";       // borrar selección en el input
-    microdisenoFileName.textContent = "";     // borrar nombre mostrado
+    microdisenoFileElement.value = ""; // borrar selección en el input
+    microdisenoFileName.textContent = ""; // borrar nombre mostrado
 
     // Deshabilitar nuevamente el botón de envío hasta que suban otro archivo
     submitButton.disabled = true;
 
     // Mantener visible la sección, sin ocultarla
-    // (no hacemos: microdisenoSection.classList.add("hidden"); ni submitSection.classList.add("hidden");)
-
-    // Opcional: actualizar el indicador de pasos si quieres
     updateStepIndicator(4);
   } catch (err) {
     console.error("Error en submitReport:", err);
-    showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' + err.message, "error");
+    showMessage(
+      '<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' +
+        err.message,
+      "error"
+    );
   }
 }
-
 
 // Función para mostrar mensajes en pantalla
 function showMessage(text, type) {
@@ -585,15 +629,64 @@ function showMessage(text, type) {
   }
 }
 
+// Función auxiliar: parsear "DD/MM/YYYY" a Date
+function parseDMY(str) {
+  const parts = str.split("/").map((p) => parseInt(p, 10));
+  // parts = [día, mes, año]
+  return new Date(parts[2], parts[1] - 1, parts[0]);
+}
+
+// Función para reenviar a Make si existe alguna semana con fecha final < 31/05/2025
+async function checkAndResendOnce(data) {
+  if (resendAttempted) return;
+
+  // Umbral: 31/05/2025
+  const threshold = new Date(2025, 4, 31); // mes 4 = mayo
+
+  // Recorrer cada grupo y cada entrada
+  for (const grupo in data) {
+    const arr = data[grupo];
+    for (const entry of arr) {
+      if (typeof entry.week === "string" && entry.week.includes("-")) {
+        // form: "DD/MM/YYYY - DD/MM/YYYY"
+        const parts = entry.week.split(" - ").map((s) => s.trim());
+        if (parts.length === 2) {
+          const endDate = parseDMY(parts[1]);
+          if (endDate.getTime() < threshold.getTime()) {
+            // Cumple la condición: reenviar UNA VEZ
+            resendAttempted = true;
+            try {
+              await fetch("https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9", {
+                method: "POST",
+                headers: { "Content-Type": "application/json; charset=utf-8" },
+                body: JSON.stringify({ aviso: "Fecha final < 31/05/2025", data }),
+              });
+              console.log("Petición de reenvío hecha a Make por fecha < 31/05/2025");
+            } catch (e) {
+              console.error("Error al reenviar a Make:", e);
+            }
+            return; // Salimos después del primer hallazgo
+          }
+        }
+      }
+    }
+  }
+}
+
 // Función para mostrar los datos del webhook en la tabla
 function displayWebhookData(data) {
   webhookTableBody.innerHTML = "";
 
-  // Iterar sobre cada grupo en los datos
+  // 1) Verificar y reenviar si corresponde (solo una vez)
+  checkAndResendOnce(data);
+
+  // 2) Construir filas. También, detectar si hay celdas a resaltar
+  const threshold = new Date(2025, 4, 31); // 31/05/2025
+  let needsAlert = false;
+
   for (const groupId in data) {
     const groupData = data[groupId];
 
-    // Iterar sobre cada entrada en el grupo
     groupData.forEach((entry) => {
       const row = document.createElement("tr");
 
@@ -604,34 +697,54 @@ function displayWebhookData(data) {
         row.classList.add("error-row");
       }
 
-      // Crear celdas para cada columna
-
-      // Grupo
+      // CELDA 1: Grupo
       const groupCell = document.createElement("td");
       groupCell.textContent = groupId;
       row.appendChild(groupCell);
 
-      // Fecha de Clase
+      // CELDA 2: Fecha de Clase
       const dateCell = document.createElement("td");
       dateCell.textContent = entry.dateOfClass || "";
       row.appendChild(dateCell);
 
-      // Tema Dado
+      // CELDA 3: Tema Dado
       const temaDadoCell = document.createElement("td");
       temaDadoCell.textContent = entry.temaDado || "";
       row.appendChild(temaDadoCell);
 
-      // Tema Esperado
+      // CELDA 4: Tema Esperado
       const temaEsperadoCell = document.createElement("td");
       temaEsperadoCell.textContent = entry.temaEsperado || "";
       row.appendChild(temaEsperadoCell);
 
-      // Semana
+      // CELDA 5: Semana
       const weekCell = document.createElement("td");
       weekCell.textContent = entry.week || "";
+
+      // Si el formato es "DD/MM/YYYY - DD/MM/YYYY", evaluamos la segunda fecha
+      if (typeof entry.week === "string" && entry.week.includes("-")) {
+        const parts = entry.week.split(" - ").map((s) => s.trim());
+        if (parts.length === 2) {
+          const endDate = parseDMY(parts[1]);
+          if (endDate.getTime() < threshold.getTime()) {
+            // 5.a) Marcar para alert y hacer blink
+            needsAlert = true;
+
+            // 5.b) Hacer parpadear: toggle background cada 500ms
+            setInterval(() => {
+              if (weekCell.style.visibility === "hidden") {
+                weekCell.style.visibility = "visible";
+              } else {
+                weekCell.style.visibility = "hidden";
+              }
+            }, 500);
+          }
+        }
+      }
+
       row.appendChild(weekCell);
 
-      // Acciones (botones de Coherente e Incoherente)
+      // CELDA 6: Acciones (botones)
       const actionsCell = document.createElement("td");
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "action-buttons";
@@ -662,6 +775,11 @@ function displayWebhookData(data) {
       // Agregar la fila a la tabla
       webhookTableBody.appendChild(row);
     });
+  }
+
+  // 3) Si hubo alguna semana inválida (< 31/05/2025), mostrar alerta
+  if (needsAlert) {
+    alert("Por favor, verifique que todos los campos tienen fecha");
   }
 }
 
