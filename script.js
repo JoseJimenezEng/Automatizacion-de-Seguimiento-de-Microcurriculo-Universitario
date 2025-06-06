@@ -1,5 +1,4 @@
 // Variables globales
-
 let excelData = []
 let selectedModule = ""
 let selectedTeacher = ""
@@ -8,9 +7,19 @@ let currentStep = 1
 let webhookData = null
 let notificationCount = 0
 let eventSource = null
-// Añadir una variable global para almacenar el archivo de microdiseño
+// Añadir una variable global para almacenar el archivo de microdiseno
 let microdisenoFile = null
-let sessionToken = null;
+let sessionToken = null
+
+// PEDIR TOKEN AL USUARIO ANTES DE CARGAR LA PÁGINA
+window.addEventListener("DOMContentLoaded", () => {
+  sessionToken = prompt("Por favor, ingresa tu token de sesión:")
+  if (!sessionToken) {
+    alert("Debes ingresar un token para continuar.")
+    // Opcional: puedes recargar la página o deshabilitar funcionalidades
+    // location.reload()
+  }
+})
 
 // Elementos del DOM
 const excelFileInput = document.getElementById("excelFile")
@@ -54,89 +63,94 @@ copyUrlBtn.addEventListener("click", copyWebhookUrl)
 
 // Inicializar conexión con el servidor de webhook
 initWebhookConnection()
-function generateSessionToken() {
-    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
+
 // Función para inicializar la conexión del webhook usando Server-Sent Events (SSE)
 function initWebhookConnection() {
-    // Generar token de sesión único
-    sessionToken = generateSessionToken();
-    console.log('Token de sesión generado:', sessionToken);
-    
-    // URL del servidor de webhook
-    const serverUrl = "https://proyectousa.onrender.com"; // Cambia esto a la URL de tu servidor
+  if (!sessionToken) {
+    console.error("No se proporcionó ningún token de sesión.")
+    statusDot.classList.remove("online")
+    statusDot.classList.add("offline")
+    statusText.textContent = "Token no válido"
+    return
+  }
 
-    try {
-        // Crear una conexión SSE con el token de sesión
-        eventSource = new EventSource(`${serverUrl}/events?token=${sessionToken}`);
+  // URL del servidor de webhook
+  const serverUrl = "https://proyectousa.onrender.com" // Cambia esto a la URL de tu servidor
 
-        // Manejar el evento de conexión abierta
-        eventSource.onopen = () => {
-            console.log("Conexión SSE establecida");
-            statusDot.classList.remove("offline");
-            statusDot.classList.add("online");
-            statusText.textContent = "Webhook conectado";
-        };
+  try {
+    // Crear una conexión SSE con el token de sesión proporcionado por el usuario
+    eventSource = new EventSource(`${serverUrl}/events?token=${encodeURIComponent(sessionToken)}`)
 
-        // Manejar el evento de mensaje recibido
-        eventSource.addEventListener("webhook-data", (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                handleWebhookData(data);
-            } catch (error) {
-                console.error("Error al procesar los datos del webhook:", error);
-            }
-        });
-
-        // Manejar errores de conexión
-        eventSource.onerror = () => {
-            console.error("Error en la conexión SSE");
-            statusDot.classList.remove("online");
-            statusDot.classList.add("offline");
-            statusText.textContent = "Webhook desconectado";
-
-            // Intentar reconectar después de 5 segundos
-            setTimeout(() => {
-                if (eventSource.readyState === EventSource.CLOSED) {
-                    initWebhookConnection();
-                }
-            }, 5000);
-        };
-    } catch (error) {
-        console.error("Error al inicializar la conexión SSE:", error);
-        statusDot.classList.remove("online");
-        statusDot.classList.add("offline");
-        statusText.textContent = "Error de conexión";
-
-        // Para fines de demostración, simular la recepción de datos después de 5 segundos
-        setTimeout(simulateWebhookData, 5000);
+    // Manejar el evento de conexión abierta
+    eventSource.onopen = () => {
+      console.log("Conexión SSE establecida")
+      statusDot.classList.remove("offline")
+      statusDot.classList.add("online")
+      statusText.textContent = "Webhook conectado"
     }
+
+    // Manejar el evento de mensaje recibido
+    eventSource.addEventListener("webhook-data", (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        handleWebhookData(data)
+      } catch (error) {
+        console.error("Error al procesar los datos del webhook:", error)
+      }
+    })
+
+    // Manejar errores de conexión
+    eventSource.onerror = () => {
+      console.error("Error en la conexión SSE")
+      statusDot.classList.remove("online")
+      statusDot.classList.add("offline")
+      statusText.textContent = "Webhook desconectado"
+
+      // Intentar reconectar después de 5 segundos
+      setTimeout(() => {
+        if (eventSource.readyState === EventSource.CLOSED) {
+          initWebhookConnection()
+        }
+      }, 5000)
+    }
+  } catch (error) {
+    console.error("Error al inicializar la conexión SSE:", error)
+    statusDot.classList.remove("online")
+    statusDot.classList.add("offline")
+    statusText.textContent = "Error de conexión"
+
+    // Para fines de demostración, simular la recepción de datos después de 5 segundos
+    setTimeout(simulateWebhookData, 5000)
+  }
 }
+
+// (Resto de tus funciones permanece igual: formatExcelDate, formatExcelTime, simulateWebhookData, handleWebhookData, etc.)
+
 function formatExcelDate(excelDate) {
-    if (!excelDate || isNaN(excelDate)) return excelDate;
-    
-    // Excel cuenta los días desde el 1 de enero de 1900
-    const excelStartDate = new Date(1900, 0, 1);
-    const millisecondsPerDay = 24 * 60 * 60 * 1000;
-    const actualDate = new Date(excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay);
-    
-    // Formatear como DD/MM/YYYY
-    const day = actualDate.getDate().toString().padStart(2, '0');
-    const month = (actualDate.getMonth() + 1).toString().padStart(2, '0');
-    const year = actualDate.getFullYear();
-    
-    return `${day}/${month}/${year}`;
+  if (!excelDate || isNaN(excelDate)) return excelDate
+
+  // Excel cuenta los días desde el 1 de enero de 1900
+  const excelStartDate = new Date(1900, 0, 1)
+  const millisecondsPerDay = 24 * 60 * 60 * 1000
+  const actualDate = new Date(excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay)
+
+  // Formatear como DD/MM/YYYY
+  const day = actualDate.getDate().toString().padStart(2, "0")
+  const month = (actualDate.getMonth() + 1).toString().padStart(2, "0")
+  const year = actualDate.getFullYear()
+
+  return `${day}/${month}/${year}`
 }
 
 function formatExcelTime(excelTime) {
-    if (!excelTime || isNaN(excelTime)) return excelTime;
-    
-    // Excel almacena las horas como fracciones de día
-    const totalMinutes = Math.round(excelTime * 24 * 60);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  if (!excelTime || isNaN(excelTime)) return excelTime
+
+  // Excel almacena las horas como fracciones de día
+  const totalMinutes = Math.round(excelTime * 24 * 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
 }
 
 // Función para simular la recepción de datos (solo para demostración)
@@ -201,6 +215,8 @@ function handleWebhookData(data) {
   // Mostrar mensaje de notificación
   showMessage('<i class="fas fa-bell"></i> Nuevos datos recibidos por webhook', "success")
 }
+
+// Resto de tus funciones (updateStepIndicator, handleExcelUpload, processExcelData, populateDropdown, handleModuleChange, handleTeacherChange, updateResults, extractPdfText, handleMicrodisenoUpload, updateSubmitButton, submitReport, showMessage, displayWebhookData, sendActionRequest, showTextModal, closeModal, copyWebhookUrl, etc.) permanece igual.
 
 // Función para actualizar el indicador de pasos
 function updateStepIndicator(step) {
