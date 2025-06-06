@@ -1,5 +1,5 @@
 // Variables globales
-let row = 7
+
 let excelData = []
 let selectedModule = ""
 let selectedTeacher = ""
@@ -456,7 +456,7 @@ function updateSubmitButton() {
 
 // Modificar la función submitReport para incluir el contenido del microdiseño como string
 async function submitReport() {
-    row = 7
+    
     if (!selectedModule || !selectedTeacher) {
       showMessage('<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente', "error");
       return;
