@@ -580,6 +580,8 @@ function displayWebhookData(data) {
             incoherentBtn.className = "btn-x";
             incoherentBtn.innerHTML = '<i class="fas fa-times"></i> Incoherente';
             incoherentBtn.onclick = () => {
+                  console.log("– Incoherente: enviando acción para grupo", groupId, " (color=true)"); 
+
                 sendActionRequest(groupId, entry, true);
                 row.remove();
             };
