@@ -1,0 +1,50 @@
+{
+  "Semana1": [
+    "Elección del problema, Video: https://www.youtube.com/watch?v=H6NGSCYgpOg, Justificación oral de la importancia del problema seleccionado, Escritura del párrafo de justificación, Formulación de la pregunta problema, Planteamiento de la tesis", "08/02/2025"
+  ],
+  "Semana2": [
+    "Planteamiento del problema: narración estructura del hecho, Video: https://www.youtube.com/watch?v=I6OIvyNefWs, Planeación del planteamiento del problema, Escritura del (los) párrafos del planteamiento del problema", "15/02/2025"
+  ],
+  "Semana3": [
+    "Capacidad para sustentar, las verdades: argumento científico, Oralidad, Video: https://www.youtube.com/watch?v=WXUuwglnlcI, Planeación del párrafo y escritura del argumento científico, Revisión y retroalimentación del argumento científico", "22/02/2025"
+  ],
+  "Semana4": [
+    "El sustento jurídico, Video: https://www.youtube.com/watch?v=443SX65FHnA, El uso de leyes, artículos o decretos, Escritura del argumento jurídico", "01/03/2025"
+  ],
+  "Semana5": [
+    "Premisas Fácticas, Video: https://www.youtube.com/watch?v=NH7ex0OBtoo, Planeación y escritura del argumento fáctico, Redacción de un ejemplo de la problemática que se está presentando", "08/03/2025"
+  ],
+  "Semana6": [
+    "Parcial Primer Corte, Presentación del texto parcial del primer corte: Justificación, pregunta problema y tesis, planteamiento del problema, argumento científico y fáctico", "15/03/2025"
+  ],
+  "Semana7": [
+    "Capacidad para motivar, Video: https://www.youtube.com/watch?v=OVfuTQxP2tw, Estrategias para lograr la motivación del lector, Escritura del esquema retórico", "22/03/2025"
+  ],
+  "Semana8": [
+    "Los valores, Video: , Temas: Redacción del párrafo de valores", "29/03/2025"
+  ],
+  "Semana9": [
+    "Contraargumento o la estructura del sin embargo, Video: , Tema: Escritura del párrafo de contraargumento", "05/04/2025"
+  ],
+  "Semana10": [
+    "Capacidad para motivar, Video: , Tema: Escritura del esquema retórico", "12/04/2025"
+  ],
+  "Semana11": [
+    "Parcial Segundo Corte, Se evalúan todos los esquemas vistos hasta la fecha", "19/04/2025"
+  ],
+  "Semana12": [
+    "Corrección y Retroalimentación del Parcial", "26/04/2025"
+  ],
+  "Semana13": [
+    "Semana de la Gramática", "03/05/2025"
+  ],
+  "Semana14": [
+    "Párrafo de conclusiones y recomendaciones, Video: https://www.youtube.com/watch?v=5fugMiY2tGs, Escritura del párrafo de conclusión y recomendaciones", "10/05/2025"
+  ],
+  "Semana15": [
+    "Párrafo de introducción, resumen y título, Video: https://www.youtube.com/watch?v=5fugMiY2tGs, Escritura del párrafo de introducción, párrafo de resumen y título", "17/05/2025"
+  ],
+  "Semana16": [
+    "Parcial tercer Corte: Presentación del artículo académico, Sustentación oral del artículo académico", "24/05/2025"
+  ]
+}

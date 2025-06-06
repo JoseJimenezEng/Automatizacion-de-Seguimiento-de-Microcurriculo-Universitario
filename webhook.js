@@ -1,248 +1,281 @@
-// REEMPLAZAR TODO EL ARCHIVO WEBHOOK EXISTENTE CON ESTE CÓDIGO
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Almacenamiento en memoria para los datos por sesión
+// Almacenamiento en memoria para SSE (opcional)
 const sessionData = new Map();
-// Clientes conectados por sesión
 const sessionClients = new Map();
 
-// Middleware para procesar JSON y habilitar CORS
-app.use(bodyParser.text({ type: '*/*' }));
+// Middleware: parsear JSON y habilitar CORS
+app.use(bodyParser.json());
 app.use(cors());
 
-// Endpoint para SSE (Server-Sent Events) con soporte de sesiones
-app.get('/events', (req, res) => {
-    const sessionToken = req.query.token;
-    
-    if (!sessionToken) {
-        res.status(400).json({ error: 'Token de sesión requerido' });
-        return;
-    }
-
-    // Configurar cabeceras para SSE
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-    });
-    
-    // Enviar un evento inicial para confirmar la conexión
-    res.write('event: connected\ndata: {"status": "connected"}\n\n');
-    
-    // Crear cliente
-    const clientId = Date.now();
-    const newClient = {
-        id: clientId,
-        res,
-        sessionToken
-    };
-    
-    // Añadir cliente a la sesión correspondiente
-    if (!sessionClients.has(sessionToken)) {
-        sessionClients.set(sessionToken, []);
-    }
-    sessionClients.get(sessionToken).push(newClient);
-    
-    console.log(`Cliente ${clientId} conectado a sesión ${sessionToken}`);
-    
-    // Enviar datos existentes de la sesión si hay alguno
-    const existingData = sessionData.get(sessionToken);
-    if (existingData && Object.keys(existingData).length > 0) {
-        const dataStr = JSON.stringify(existingData);
-        res.write(`event: webhook-data\ndata: ${dataStr}\n\n`);
-    }
-    
-    // Eliminar cliente cuando se cierre la conexión
-    req.on('close', () => {
-        console.log(`Cliente ${clientId} desconectado de sesión ${sessionToken}`);
-        const sessionClientList = sessionClients.get(sessionToken);
-        if (sessionClientList) {
-            const index = sessionClientList.findIndex(client => client.id === clientId);
-            if (index !== -1) {
-                sessionClientList.splice(index, 1);
-                // Si no quedan clientes en la sesión, eliminar la sesión
-                if (sessionClientList.length === 0) {
-                    sessionClients.delete(sessionToken);
-                    sessionData.delete(sessionToken);
-                    console.log(`Sesión ${sessionToken} eliminada`);
-                }
-            }
-        }
-    });
-});
-
-// Endpoint para recibir el webhook
-app.post('/webhook', (req, res) => {
-    try {
-        // Obtener el cuerpo de la solicitud como string
-        let jsonString = req.body;
-        // console.log('Datos recibidos en el webhook:', );
-        
-        // Eliminar los delimitadores ```json y ``` si existen
-        if (jsonString.startsWith('```json')) {
-            jsonString = jsonString.substring('```json'.length);
-        }
-        if (jsonString.endsWith('```')) {
-            jsonString = jsonString.substring(0, jsonString.length - 3);
-        }
-        
-        // Parsear el JSON
-        const data = JSON.parse(jsonString);
-        
-        // Añadir campo "observations" a cada elemento si no existe
-        for (const groupId in data) {
-            data[groupId].forEach(item => {
-                if (!item.hasOwnProperty('observations')) {
-                    item.observations = "None";
-                }
-            });
-        }
-        
-        // Determinar a qué sesión enviar los datos
-        // Por simplicidad, si no se especifica sesión, crear una nueva o usar la primera activa
-        let targetSessionToken = req.query.token;
-        
-        // // Buscar la primera sesión activa (en un escenario real, esto se haría de manera más específica)
-        // for (const [sessionToken, clients] of sessionClients.entries()) {
-        //     if (clients.length > 0) {
-        //         targetSessionToken = sessionToken;
-        //         break;
-        //     }
-        // }
-        
-        if (targetSessionToken) {
-            // Guardar los datos para la sesión específica
-            sessionData.set(targetSessionToken, data);
-            
-            // Notificar solo a los clientes de esta sesión
-            sendEventToSession(targetSessionToken, 'webhook-data', data);
-            
-            console.log(`Datos enviados a sesión ${targetSessionToken}`);
-        }
-        
-        // Enviar respuesta
-        res.status(200).json({
-            success: true,
-            message: 'Datos recibidos y procesados correctamente',
-            sessionToken: targetSessionToken,
-            data: data
-        });
-        
-    } catch (error) {
-        console.error('Error al procesar el webhook:', error);
-        res.status(400).json({
-            success: false,
-            message: 'Error al procesar los datos',
-            error: error.message
-        });
-    }
-});
-
-// Endpoint para recibir acciones (coherente/incoherente) con soporte de sesiones
-app.post('/action', (req, res) => {
-    try {
-        // Obtener el cuerpo de la solicitud
-        let jsonString = req.body;
-        
-        // Si es un string, parsearlo
-        let data;
-        if (typeof jsonString === 'string') {
-            data = JSON.parse(jsonString);
-        } else {
-            data = jsonString;
-        }
-        
-        const sessionToken = data.sessionToken;
-        
-        if (!sessionToken) {
-            return res.status(400).json({
-                success: false,
-                message: 'Token de sesión requerido'
-            });
-        }
-        
-        // Procesar la acción para la sesión específica
-        console.log(`Acción recibida para sesión ${sessionToken}: ${data.color ? 'Incoherente' : 'Coherente'} para grupo ${data.groupId}`);
-        
-        // Actualizar los datos en memoria para la sesión específica
-        const sessionWebhookData = sessionData.get(sessionToken);
-        if (sessionWebhookData && sessionWebhookData[data.groupId]) {
-            const index = sessionWebhookData[data.groupId].findIndex(item => 
-                item.dateOfClass === data.dateOfClass && 
-                item.temaDado === data.temaDado
-            );
-            
-            if (index !== -1) {
-                // Actualizar el estado según la acción
-                sessionWebhookData[data.groupId][index].success = !data.color;
-                // Actualizar observaciones
-                sessionWebhookData[data.groupId][index].observations = 
-                    data.color ? "Marcado como incoherente" : "Marcado como coherente";
-                
-                // Actualizar los datos de la sesión
-                sessionData.set(sessionToken, sessionWebhookData);
-                
-                // Notificar solo a los clientes de esta sesión sobre el cambio
-                sendEventToSession(sessionToken, 'webhook-data', sessionWebhookData);
-            }
-        }
-        
-        // Enviar respuesta
-        res.status(200).json({
-            success: true,
-            message: `Acción ${data.color ? 'incoherente' : 'coherente'} procesada correctamente para sesión ${sessionToken}`
-        });
-        
-    } catch (error) {
-        console.error('Error al procesar la acción:', error);
-        res.status(400).json({
-            success: false,
-            message: 'Error al procesar la acción',
-            error: error.message
-        });
-    }
-});
-
-// Función para enviar eventos a todos los clientes de una sesión específica
-function sendEventToSession(sessionToken, eventName, data) {
-    const clients = sessionClients.get(sessionToken);
-    if (clients) {
-        clients.forEach(client => {
-            try {
-                client.res.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
-            } catch (error) {
-                console.error(`Error al enviar evento a cliente ${client.id}:`, error);
-            }
-        });
-    }
+/**
+ * Convierte "M/D/YYYY" o "MM/DD/YYYY" en Date.
+ */
+function parseDateMDY(str) {
+  const parts = str.split('/');
+  const month = parseInt(parts[0], 10) - 1;
+  const day = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+  return new Date(year, month, day);
 }
 
-// Endpoint para obtener estadísticas de sesiones (opcional, para debugging)
-app.get('/sessions', (req, res) => {
-    const sessions = [];
-    for (const [sessionToken, clients] of sessionClients.entries()) {
-        sessions.push({
-            sessionToken,
-            clientCount: clients.length,
-            hasData: sessionData.has(sessionToken)
-        });
+/**
+ * Convierte "DD/MM/YYYY" en Date.
+ */
+function parseDateDMY(str) {
+  const parts = str.split('/');
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const year = parseInt(parts[2], 10);
+  return new Date(year, month, day);
+}
+
+// SSE: conectar clientes que escuchen cambios en cierta sesión
+app.get('/events', (req, res) => {
+  const sessionToken = req.query.token;
+  if (!sessionToken) {
+    res.status(400).json({ error: 'Token de sesión requerido' });
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+
+  // Enviar evento inicial de confirmación
+  res.write('event: connected\ndata: {"status":"connected"}\n\n');
+
+  const clientId = Date.now();
+  const newClient = { id: clientId, res, sessionToken };
+  if (!sessionClients.has(sessionToken)) {
+    sessionClients.set(sessionToken, []);
+  }
+  sessionClients.get(sessionToken).push(newClient);
+
+  console.log(`Cliente ${clientId} conectado a sesión ${sessionToken}`);
+
+  // Si ya hay datos previos en esta sesión, enviarlos de inmediato
+  const existing = sessionData.get(sessionToken);
+  if (existing) {
+    res.write(`event: webhook-data\ndata: ${JSON.stringify(existing)}\n\n`);
+  }
+
+  req.on('close', () => {
+    console.log(`Cliente ${clientId} desconectado de sesión ${sessionToken}`);
+    const lista = sessionClients.get(sessionToken) || [];
+    const idx = lista.findIndex(c => c.id === clientId);
+    if (idx !== -1) {
+      lista.splice(idx, 1);
+      if (lista.length === 0) {
+        sessionClients.delete(sessionToken);
+        sessionData.delete(sessionToken);
+        console.log(`Sesión ${sessionToken} eliminada`);
+      }
     }
-    
-    res.json({
-        totalSessions: sessions.length,
-        sessions: sessions
-    });
+  });
 });
 
-// Iniciar el servidor
+// Endpoint principal para recibir el webhook con JSON1 y JSON2
+app.post('/webhook', (req, res) => {
+  try {
+    // Estructura esperada en el body:
+    // {
+    //   "JSON1": [
+    //     { "1": "DERE5170-S01", "3": "2/3/2025", "4": "Tema dado..." },
+    //     ...
+    //   ],
+    //   "JSON2": {
+    //     "Semana1": [ "Temas esperados de la Semana1", "08/02/2025" ],
+    //     "Semana2": [ "Temas esperados de la Semana2", "15/02/2025" ],
+    //     ...
+    //   }
+    // }
+
+    const payload = req.body;
+    const rawJSON1 = Array.isArray(payload.JSON1) ? payload.JSON1 : [];
+    let rawJSON2 = (typeof payload.JSON2 === 'object' && payload.JSON2 !== null)
+      ? payload.JSON2
+      : {};
+
+    // 1) Construir arreglo de semanas a partir de JSON2
+    // Cada entrada: { temasEsperados: string, fechaFinDate: Date, fechaFinStr: string }
+    const semanas = [];
+    rawJSON2 = rawJSON2[0];
+    for (const semanaKey in rawJSON2) {
+      if (!rawJSON2.hasOwnProperty(semanaKey)) continue;
+
+      const arr = rawJSON2[semanaKey];
+      if (!Array.isArray(arr) || arr.length < 2) continue;
+
+      const temasEsperados = String(arr[0]).trim();
+      const fechaFinStr = String(arr[1]).trim(); // formato "DD/MM/YYYY"
+      const fechaFinDate = parseDateDMY(fechaFinStr);
+
+      semanas.push({
+        temasEsperados,
+        fechaFinDate,
+        fechaFinStr
+      });
+    }
+    console.log("Semanas procesadas:", semanas);
+
+    // Ordenar semanas por fechaFinDate ascendente
+    semanas.sort((a, b) => a.fechaFinDate - b.fechaFinDate);
+
+    // 2) Agrupar JSON1 por grupo (campo "1")
+    const agrupado = {};
+
+    rawJSON1.forEach(item => {
+      const grupo = item["1"] || null;
+      const dateStrRaw = item["3"] || "";
+      const temaDadoRaw = item["4"] || "";
+
+      const fechaClaseStr = dateStrRaw.trim(); // "M/D/YYYY" o "MM/DD/YYYY"
+      const temaDado = temaDadoRaw.trim() === "" ? null : temaDadoRaw.trim();
+
+      let matchedTemaEsperado = null;
+      let matchedWeekStr = null;
+
+      if (fechaClaseStr !== "") {
+        const fechaClaseDate = parseDateMDY(fechaClaseStr);
+
+        // Buscar la primera semana cuya fechaFinDate >= fechaClaseDate
+        for (const sem of semanas) {
+          if (fechaClaseDate.getTime() <= sem.fechaFinDate.getTime()) {
+            matchedTemaEsperado = sem.temasEsperados;
+            matchedWeekStr = sem.fechaFinStr; // guardamos exactamente "DD/MM/YYYY"
+            break;
+          }
+        }
+      }
+
+      // Si no se encontró correspondencia, quedarían null ambos
+      if (!matchedTemaEsperado) matchedTemaEsperado = null;
+      if (!matchedWeekStr) matchedWeekStr = null;
+
+      const claseObj = {
+        temaDado,
+        temaEsperado: matchedTemaEsperado,
+        dateOfClass: fechaClaseStr,
+        week: matchedWeekStr
+      };
+
+      if (!agrupado[grupo]) {
+        agrupado[grupo] = [];
+      }
+      agrupado[grupo].push(claseObj);
+    });
+
+    // 3) (Opcional) Guardar en memoria por sesión para SSE
+    const sessionToken = req.query.token;
+    if (sessionToken) {
+      sessionData.set(sessionToken, agrupado);
+      sendEventToSession(sessionToken, 'webhook-data', agrupado);
+      console.log("DATA \n", agrupado);
+    }
+
+    // 4) Responder con el JSON organizado
+    res.status(200).json({
+      success: true,
+      message: 'Datos recibidos y transformados correctamente',
+      newData: agrupado
+    });
+  } catch (error) {
+    console.error('Error al procesar el webhook:', error);
+    res.status(400).json({
+      success: false,
+      message: 'Error al procesar los datos',
+      error: error.message
+    });
+  }
+});
+
+// Endpoint para recibir acciones (coherente/incoherente) con soporte de sesiones (idéntico al ejemplo anterior)
+app.post('/action', (req, res) => {
+  try {
+    const data = req.body;
+    const sessionToken = data.sessionToken;
+    if (!sessionToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token de sesión requerido'
+      });
+    }
+
+    console.log(`Acción recibida para sesión ${sessionToken}: ${data.color ? 'Incoherente' : 'Coherente'} para grupo ${data.groupId}`);
+
+    const sessionWebhookData = sessionData.get(sessionToken);
+    if (sessionWebhookData && sessionWebhookData[data.groupId]) {
+      const arrGrupo = sessionWebhookData[data.groupId];
+      const idx = arrGrupo.findIndex(item =>
+        item.dateOfClass === data.dateOfClass &&
+        item.temaDado === data.temaDado
+      );
+      if (idx !== -1) {
+        arrGrupo[idx].success = !data.color;
+        arrGrupo[idx].observations = data.color
+          ? "Marcado como incoherente"
+          : "Marcado como coherente";
+
+        sessionData.set(sessionToken, sessionWebhookData);
+        sendEventToSession(sessionToken, 'webhook-data', sessionWebhookData);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Acción ${data.color ? 'incoherente' : 'coherente'} procesada correctamente para sesión ${sessionToken}`
+    });
+  } catch (error) {
+    console.error('Error al procesar la acción:', error);
+    res.status(400).json({
+      success: false,
+      message: 'Error al procesar la acción',
+      error: error.message
+    });
+  }
+});
+
+// Función auxiliar para emitir SSE en la sesión indicada
+function sendEventToSession(sessionToken, eventName, data) {
+  const clients = sessionClients.get(sessionToken);
+  if (clients) {
+    clients.forEach(client => {
+      try {
+        client.res.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+      } catch (err) {
+        console.error(`Error al enviar evento a cliente ${client.id}:`, err);
+      }
+    });
+  }
+}
+
+// Endpoint para ver estadísticas de sesiones (opcional)
+app.get('/sessions', (req, res) => {
+  const sessions = [];
+  for (const [token, clients] of sessionClients.entries()) {
+    sessions.push({
+      sessionToken: token,
+      clientCount: clients.length,
+      hasData: sessionData.has(token)
+    });
+  }
+  res.json({
+    totalSessions: sessions.length,
+    sessions: sessions
+  });
+});
+
+// Iniciar servidor
 app.listen(port, () => {
-    console.log(`Servidor webhook con sesiones escuchando en el puerto ${port}`);
-    console.log(`Endpoint SSE disponible en http://localhost:${port}/events?token=SESSION_TOKEN`);
-    console.log(`Endpoint webhook disponible en http://localhost:${port}/webhook`);
-    console.log(`Endpoint de estadísticas disponible en http://localhost:${port}/sessions`);
+  console.log(`Servidor webhook escuchando en el puerto ${port}`);
+  console.log(`SSE disponible en http://localhost:${port}/events?token=TU_TOKEN`);
+  console.log(`Webhook disponible en http://localhost:${port}/webhook`);
+  console.log(`Sessions (estadísticas) en http://localhost:${port}/sessions`);
 });
