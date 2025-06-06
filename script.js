@@ -17,7 +17,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (!sessionToken) {
     alert("Debes ingresar un token para continuar.")
     // Opcional: puedes recargar la página o deshabilitar funcionalidades
-    // location.reload()
+    location.reload()
   }else{
     initWebhookConnection()
 
