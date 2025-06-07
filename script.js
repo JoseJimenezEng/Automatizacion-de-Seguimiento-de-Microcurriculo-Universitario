@@ -12,7 +12,7 @@ let microdisenoFile = null;
 let sessionToken = null;
 
 // Para reenviar a Make SOLO UNA VEZ
-let resendAttempted = false;
+let resendAttempted = 0;
 
 // Usuarios válidos para la credencial
 const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian"];
@@ -165,7 +165,7 @@ function formatExcelTime(excelTime) {
   const minutes = totalMinutes % 60;
 
   return `${hours.toString().padStart(2, "0")}:${minutes.n
-.toString().padStart(2, "0")}`;
+    .toString().padStart(2, "0")}`;
 }
 
 // Función para simular la recepción de datos (solo para demostración)
@@ -496,7 +496,7 @@ async function handleMicrodisenoUpload(event) {
       texto = await extractPdfText(file);
     } else if (
       file.type ===
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       file.name.toLowerCase().endsWith(".docx")
     ) {
       texto = await extractDocxText(file);
@@ -609,7 +609,7 @@ async function submitReport() {
     console.error("Error en submitReport:", err);
     showMessage(
       '<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' +
-        err.message,
+      err.message,
       "error"
     );
   }
@@ -636,41 +636,34 @@ function parseDMY(str) {
   return new Date(parts[2], parts[1] - 1, parts[0]);
 }
 
+let needsAlert = false;
 // Función para reenviar a Make si existe alguna semana con fecha final < 31/05/2025
 async function checkAndResendOnce(data) {
   if (resendAttempted) return;
 
   // Umbral: 31/05/2025
   const threshold = new Date(2025, 4, 31); // mes 4 = mayo
-
+  console.log(data);
   // Recorrer cada grupo y cada entrada
+  let week;
   for (const grupo in data) {
     const arr = data[grupo];
     for (const entry of arr) {
-      if (typeof entry.week === "string" && entry.week.includes("-")) {
+      if (typeof entry.week === "string") {
         // form: "DD/MM/YYYY - DD/MM/YYYY"
-        const parts = entry.week.split(" - ").map((s) => s.trim());
-        if (parts.length === 2) {
-          const endDate = parseDMY(parts[1]);
-          if (endDate.getTime() < threshold.getTime()) {
-            // Cumple la condición: reenviar UNA VEZ
-            resendAttempted = true;
-            try {
-              await fetch("https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9", {
-                method: "POST",
-                headers: { "Content-Type": "application/json; charset=utf-8" },
-                body: JSON.stringify({ aviso: "Fecha final < 31/05/2025", data }),
-              });
-              console.log("Petición de reenvío hecha a Make por fecha < 31/05/2025");
-            } catch (e) {
-              console.error("Error al reenviar a Make:", e);
-            }
-            return; // Salimos después del primer hallazgo
-          }
-        }
+
+        week = entry.week; // Tomamos la segunda fecha
+
       }
     }
   }
+  const endDate = parseDMY(week);
+  console.log("Evaluando semana:", endDate);
+  if (endDate.getTime() < threshold.getTime()) {
+    needsAlert = true; // Marcar que hay semanas inválidas
+    return; // Salimos después del primer hallazgo
+  }
+
 }
 
 // Función para mostrar los datos del webhook en la tabla
@@ -681,8 +674,6 @@ function displayWebhookData(data) {
   checkAndResendOnce(data);
 
   // 2) Construir filas. También, detectar si hay celdas a resaltar
-  const threshold = new Date(2025, 4, 31); // 31/05/2025
-  let needsAlert = false;
 
   for (const groupId in data) {
     const groupData = data[groupId];
@@ -722,25 +713,6 @@ function displayWebhookData(data) {
       weekCell.textContent = entry.week || "";
 
       // Si el formato es "DD/MM/YYYY - DD/MM/YYYY", evaluamos la segunda fecha
-      if (typeof entry.week === "string" && entry.week.includes("-")) {
-        const parts = entry.week.split(" - ").map((s) => s.trim());
-        if (parts.length === 2) {
-          const endDate = parseDMY(parts[1]);
-          if (endDate.getTime() < threshold.getTime()) {
-            // 5.a) Marcar para alert y hacer blink
-            needsAlert = true;
-
-            // 5.b) Hacer parpadear: toggle background cada 500ms
-            setInterval(() => {
-              if (weekCell.style.visibility === "hidden") {
-                weekCell.style.visibility = "visible";
-              } else {
-                weekCell.style.visibility = "hidden";
-              }
-            }, 500);
-          }
-        }
-      }
 
       row.appendChild(weekCell);
 
@@ -779,7 +751,9 @@ function displayWebhookData(data) {
 
   // 3) Si hubo alguna semana inválida (< 31/05/2025), mostrar alerta
   if (needsAlert) {
-    alert("Por favor, verifique que todos los campos tienen fecha");
+    alert("Por favor, vuelva a subir el microdiseño y enviar el reporte. Hubo un error.");
+    needsAlert = false; // Reiniciar la bandera para futuros envíos
+    webhookTableBody.innerHTML = ""; // Limpiar la tabla
   }
 }
 
@@ -815,8 +789,7 @@ function sendActionRequest(groupId, entry, color) {
     })
     .then((result) => {
       showMessage(
-        `<i class="fas fa-check-circle"></i> Acción ${
-          color ? "incoherente" : "coherente"
+        `<i class="fas fa-check-circle"></i> Acción ${color ? "incoherente" : "coherente"
         } enviada correctamente`,
         "success"
       );
