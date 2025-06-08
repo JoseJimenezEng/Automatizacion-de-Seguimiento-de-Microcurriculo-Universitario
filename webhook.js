@@ -97,9 +97,8 @@ app.post(
       //    - Eliminamos ```json al inicio
       //    - Eliminamos ``` al final (con o sin “json”)
       rawText = rawText.trim();
-      if (rawText.JSON2.startsWith('```json')) {
-        rawText = rawText.replace(/```json\s*/g, '').replace(/```/g, '').trim();
-      }
+      rawText = rawText.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+      
 
       
 
