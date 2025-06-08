@@ -97,21 +97,11 @@ app.post(
       //    - Eliminamos ```json al inicio
       //    - Eliminamos ``` al final (con o sin “json”)
       rawText = rawText.trim();
-      if (rawText.startsWith('```')) {
-        // Posible formato: ```json\n{ ... }\n```
-        // o bien ```\n{ ... }\n```
-        // Eliminamos las tres backticks iniciales y finales
-        // Buscamos el índice donde termine la primera línea de backticks
-        const firstLineEnd = rawText.indexOf('\n');
-        if (firstLineEnd !== -1) {
-          // quitamos la primera línea que contiene ``` o ```json
-          rawText = rawText.slice(firstLineEnd + 1).trim();
-          // Luego quitamos los últimos ``` (pueden ir en su propia línea)
-          if (rawText.endsWith('```')) {
-            rawText = rawText.slice(0, -3).trim();
-          }
-        }
+      if (rawText.JSON2.startsWith('```json')) {
+        rawText = rawText.replace(/```json\s*/g, '').replace(/```/g, '').trim();
       }
+
+      
 
       // 3) Parsear JSON “limpio”
       const payload = JSON.parse(rawText);
