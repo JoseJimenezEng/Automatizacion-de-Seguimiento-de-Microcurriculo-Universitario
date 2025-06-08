@@ -1,4 +1,6 @@
 // Variables globales
+// Al principio de tu script (junto a las demás variables globales)
+let pendingActions = [];
 let excelData = [];
 let selectedModule = "";
 let selectedTeacher = "";
@@ -12,7 +14,6 @@ let microdisenoFile = null;
 let sessionToken = null;
 
 // Para reenviar a Make SOLO UNA VEZ
-let resendAttempted = 0;
 
 // Usuarios válidos para la credencial
 const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian"];
@@ -646,7 +647,6 @@ function parseDMY(str) {
 let needsAlert = false;
 // Función para reenviar a Make si existe alguna semana con fecha final < 31/05/2025
 async function checkAndResendOnce(data) {
-  if (resendAttempted) return;
 
   // Umbral: 31/05/2025
   const threshold = new Date(2025, 4, 31); // mes 4 = mayo
@@ -733,7 +733,7 @@ function displayWebhookData(data) {
       coherentBtn.className = "btn-check";
       coherentBtn.innerHTML = '<i class="fas fa-check"></i> Coherente';
       coherentBtn.onclick = () => {
-        sendActionRequest(groupId, entry, false);
+        addActionAndMaybeSend(groupId, entry, false);
         row.remove();
       };
       actionsDiv.appendChild(coherentBtn);
@@ -743,7 +743,7 @@ function displayWebhookData(data) {
       incoherentBtn.className = "btn-x";
       incoherentBtn.innerHTML = '<i class="fas fa-times"></i> Incoherente';
       incoherentBtn.onclick = () => {
-        sendActionRequest(groupId, entry, true);
+        addActionAndMaybeSend(groupId, entry, true);
         row.remove();
       };
       actionsDiv.appendChild(incoherentBtn);
@@ -765,50 +765,64 @@ function displayWebhookData(data) {
 }
 
 // Función para enviar la solicitud de acción (Coherente/Incoherente)
-function sendActionRequest(groupId, entry, color) {
-  const data = {
+function addActionAndMaybeSend(groupId, entry, color) {
+  // Empuja al array de pendientes
+  pendingActions.push({
     ...entry,
-    groupId: groupId,
-    color: color,
+    groupId,
+    color,
     modulo: selectedModule,
     docente: selectedTeacher,
-    sessionToken: sessionToken, // Incluir el token de sesión
-  };
+    sessionToken
+  });
+  console.log("Buffer de acciones pendiente:", pendingActions);
 
-  // Mostrar mensaje de carga
-  showMessage('<i class="fas fa-spinner fa-spin"></i> Enviando acción...', "success");
+  // Elimina la fila (esto ya lo hacías)
+  // ... (tu código para row.remove())
 
-  // URL para la solicitud POST
-  const postUrl = "https://hook.us2.make.com/qefil1n1twwp97kczuuw4ugbvn6sr2es";
-
-  fetch(postUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Error en la respuesta del servidor");
-      }
-      return response.text();
-    })
-    .then((result) => {
-      showMessage(
-        `<i class="fas fa-check-circle"></i> Acción ${color ? "incoherente" : "coherente"
-        } enviada correctamente`,
-        "success"
-      );
-    })
-    .catch((error) => {
-      console.error("Error al enviar la acción:", error);
-      showMessage(
-        '<i class="fas fa-exclamation-circle"></i> Error al enviar la acción: ' + error.message,
-        "error"
-      );
-    });
+  // Si ya no quedan filas en la tabla, envía el lote
+  const rowsLeft = webhookTableBody.querySelectorAll("tr").length;
+  console.log("Filas restantes:", rowsLeft);
+  if (rowsLeft === 0) {
+    sendBatchActions();
+  }
 }
+
+async function sendBatchActions() {
+  if (pendingActions.length === 0) return;
+
+  showMessage(
+    '<i class="fas fa-spinner fa-spin"></i> Enviando lote de acciones...',
+    "success"
+  );
+
+  try {
+    const res = await fetch(
+      "https://hook.us2.make.com/qefil1n1twwp97kczuuw4ugbvn6sr2es",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingActions),
+      }
+    );
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    await res.text();
+    showMessage(
+      `<i class="fas fa-check-circle"></i> Todas las acciones enviadas correctamente`,
+      "success"
+    );
+    // Vacía el array para la próxima vez
+    pendingActions = [];
+  } catch (err) {
+    console.error("Error al enviar lote de acciones:", err);
+    showMessage(
+      '<i class="fas fa-exclamation-circle"></i> Error al enviar lote: ' + err.message,
+      "error"
+    );
+  }
+}
+
 
 // Función para mostrar el modal con texto completo (observaciones, etc.)
 function showTextModal(title, text) {
