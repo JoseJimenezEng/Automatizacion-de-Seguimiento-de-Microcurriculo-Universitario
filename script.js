@@ -783,7 +783,7 @@ function addActionAndMaybeSend(groupId, entry, color) {
   // Si ya no quedan filas en la tabla, envía el lote
   const rowsLeft = webhookTableBody.querySelectorAll("tr").length;
   console.log("Filas restantes:", rowsLeft);
-  if (rowsLeft === 0) {
+  if (rowsLeft === 1) {
     sendBatchActions();
   }
 }
