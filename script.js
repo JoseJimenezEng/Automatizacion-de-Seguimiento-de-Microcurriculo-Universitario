@@ -801,7 +801,7 @@ async function sendBatchActions() {
       actions: pendingActions,
     }
     const res = await fetch(
-      "https://hook.us2.make.com/a24k3557thaml0sfhgi3ocpug50if28y",
+      "https://hook.us2.make.com/qefil1n1twwp97kczuuw4ugbvn6sr2es",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
