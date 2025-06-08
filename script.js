@@ -91,7 +91,13 @@ function initWebhookConnection() {
     // Manejar el evento de mensaje recibido
     eventSource.addEventListener("webhook-data", (event) => {
       try {
-        const data = JSON.parse(event.data);
+        // 1) Limpiamos fetos de Markdown:
+        let raw = event.data;
+        raw = raw.replace(/```json/g, "").replace(/```/g, "");
+
+        // 2) Parseamos el JSON limpio
+        const data = JSON.parse(raw);
+
         handleWebhookData(data);
       } catch (error) {
         console.error("Error al procesar los datos del webhook:", error);
@@ -641,8 +647,7 @@ function sendActionRequest(groupId, entry, color) {
     })
     .then((result) => {
       showMessage(
-        `<i class="fas fa-check-circle"></i> Acción ${
-          color ? "incoherente" : "coherente"
+        `<i class="fas fa-check-circle"></i> Acción ${color ? "incoherente" : "coherente"
         } enviada correctamente`,
         "success"
       );
