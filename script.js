@@ -797,6 +797,9 @@ async function sendBatchActions() {
   );
 
   try {
+    pendingActions = {
+      actions: pendingActions,
+    }
     const res = await fetch(
       "https://hook.us2.make.com/a24k3557thaml0sfhgi3ocpug50if28y",
       {
