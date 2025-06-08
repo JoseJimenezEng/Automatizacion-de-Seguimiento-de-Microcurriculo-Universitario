@@ -184,7 +184,7 @@ app.post(
       if (sessionToken) {
         sessionData.set(sessionToken, agrupado);
         sendEventToSession(sessionToken, 'webhook-data', agrupado);
-        console.log('DATA \n', agrupado);
+        // console.log('DATA \n', agrupado);
       }
 
       // 7) Responder con JSON organizado

@@ -108,7 +108,7 @@ function initWebhookConnection() {
       try {
         // 1) Limpiamos fetos de Markdown:
         let raw = event.data;
-        console.log("Datos recibidos del webhook:", raw);
+        // console.log("Datos recibidos del webhook:", raw);
         raw = raw.replace(/```json/g, "").replace(/```/g, "");
 
         // 2) Parseamos el JSON limpio
