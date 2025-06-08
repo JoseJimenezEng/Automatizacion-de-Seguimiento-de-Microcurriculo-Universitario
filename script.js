@@ -7,20 +7,33 @@ let currentStep = 1;
 let webhookData = null;
 let notificationCount = 0;
 let eventSource = null;
-// Añadir una variable global para almacenar el archivo de microdiseno
+// Añadir una variable global para almacenar el archivo de microdiseño
 let microdisenoFile = null;
 let sessionToken = null;
 
+// Para reenviar a Make SOLO UNA VEZ
+let resendAttempted = 0;
+
+// Usuarios válidos para la credencial
+const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian"];
+
 // PEDIR TOKEN AL USUARIO ANTES DE CARGAR LA PÁGINA
+// Mostrar el modal al cargar
 window.addEventListener("DOMContentLoaded", () => {
-  sessionToken = prompt("Por favor, ingresa tu token de sesión:");
-  if (!sessionToken) {
-    alert("Debes ingresar un token para continuar.");
-    // Opcional: puedes recargar la página o deshabilitar funcionalidades
-    location.reload();
-  } else {
-    initWebhookConnection();
+  document.getElementById("tokenModal").style.display = "flex";
+});
+
+// Al hacer clic en Entrar
+document.getElementById("tokenSubmit").addEventListener("click", () => {
+  const input = document.getElementById("tokenInput").value.trim();
+  if (!validUsers.includes(input)) {
+    alert("Credencial inválida. Use: " + validUsers.join(", "));
+    return;
   }
+  sessionToken = input;
+  // ocultar modal y continuar
+  document.getElementById("tokenModal").style.display = "none";
+  initWebhookConnection();
 });
 
 // Elementos del DOM
@@ -74,11 +87,13 @@ function initWebhookConnection() {
   }
 
   // URL del servidor de webhook
-  const serverUrl = "https://proyectousa.onrender.com"; // Cambia esto a la URL de tu servidor
+  const serverUrl = "https://proyectousa.onrender.com";
 
   try {
     // Crear una conexión SSE con el token de sesión proporcionado por el usuario
-    eventSource = new EventSource(`${serverUrl}/events?token=${encodeURIComponent(sessionToken)}`);
+    eventSource = new EventSource(
+      `${serverUrl}/events?token=${encodeURIComponent(sessionToken)}`
+    );
 
     // Manejar el evento de conexión abierta
     eventSource.onopen = () => {
@@ -135,7 +150,9 @@ function formatExcelDate(excelDate) {
   // Excel cuenta los días desde el 1 de enero de 1900
   const excelStartDate = new Date(1900, 0, 1);
   const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  const actualDate = new Date(excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay);
+  const actualDate = new Date(
+    excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay
+  );
 
   // Formatear como DD/MM/YYYY
   const day = actualDate.getDate().toString().padStart(2, "0");
@@ -153,7 +170,8 @@ function formatExcelTime(excelTime) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  return `${hours.toString().padStart(2, "0")}:${minutes.n
+    .toString().padStart(2, "0")}`;
 }
 
 // Función para simular la recepción de datos (solo para demostración)
@@ -164,7 +182,8 @@ function simulateWebhookData() {
       {
         temaDado:
           "Presentación del Micro currículo, socialización Tema: Introducción a la Historia de la Filosofía del Derecho Concepto – utilidad- objeto -relación con otras ciencias",
-        temaEsperado: "Bienvenida al curso y presentación de la clase y presentación del contenido programático",
+        temaEsperado:
+          "Bienvenida al curso y presentación de la clase y presentación del contenido programático",
         success: true,
         week: "02/06/2025 - 02/07/2025",
         dateOfClass: "2/6/2025",
@@ -279,7 +298,9 @@ function handleExcelUpload(event) {
         "Hrs. Clase",
         "Hora Ingreso",
       ];
-      const hasExpectedFormat = expectedHeaders.every((header) => headers.includes(header));
+      const hasExpectedFormat = expectedHeaders.every((header) =>
+        headers.includes(header)
+      );
 
       if (!hasExpectedFormat) {
         showMessage("El formato del archivo no es el esperado", "error");
@@ -293,7 +314,10 @@ function handleExcelUpload(event) {
       updateStepIndicator(2);
     } catch (error) {
       console.error("Error al procesar el archivo:", error);
-      showMessage("Error al procesar el archivo. Asegúrese de que sea un archivo Excel válido.", "error");
+      showMessage(
+        "Error al procesar el archivo. Asegúrese de que sea un archivo Excel válido.",
+        "error"
+      );
     }
   };
 
@@ -383,7 +407,10 @@ function updateResults() {
 
   const filteredData = excelData
     .slice(1)
-    .filter((row) => row[moduleIndex] === selectedModule && row[teacherIndex] === selectedTeacher);
+    .filter(
+      (row) =>
+        row[moduleIndex] === selectedModule && row[teacherIndex] === selectedTeacher
+    );
 
   // Mostrar resultados
   resultsBody.innerHTML = "";
@@ -392,7 +419,8 @@ function updateResults() {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 6; // Cambiado a 6 columnas (eliminamos las 2 últimas)
-    cell.textContent = "No se encontraron resultados para esta combinación de módulo y docente.";
+    cell.textContent =
+      "No se encontraron resultados para esta combinación de módulo y docente.";
     cell.style.textAlign = "center";
     row.appendChild(cell);
     resultsBody.appendChild(row);
@@ -429,7 +457,7 @@ function updateResults() {
 }
 
 // —————————————————————————————————————————
-// Nuevo: función para extraer texto de .docx con Mammoth.js
+// Función para extraer texto de .docx con Mammoth.js
 // Asegúrate de haber incluido en tu HTML:
 // <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 async function extractDocxText(file) {
@@ -438,7 +466,23 @@ async function extractDocxText(file) {
   return result.value; // Texto plano extraído
 }
 
-// Función para manejar la carga del archivo de microdiseño (.docx)
+// Función para extraer texto de .pdf con pdfjsLib
+// Asegúrate de haber incluido en tu HTML:
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map((item) => item.str);
+    fullText += strings.join(" ") + "\n\n";
+  }
+  return fullText;
+}
+
+// Función para manejar la carga del archivo de microdiseño (.pdf o .docx)
 async function handleMicrodisenoUpload(event) {
   event.preventDefault();
   const file = event.target.files[0];
@@ -453,13 +497,36 @@ async function handleMicrodisenoUpload(event) {
 
   // Extraemos y mostramos el texto en consola (o en un modal si prefieres)
   try {
-    const texto = await extractDocxText(file);
-    console.log("Texto extraído del DOCX:", texto);
+    let texto;
+    if (file.type === "application/pdf") {
+      texto = await extractPdfText(file);
+    } else if (
+      file.type ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.name.toLowerCase().endsWith(".docx")
+    ) {
+      texto = await extractDocxText(file);
+    } else {
+      showMessage(
+        '<i class="fas fa-exclamation-circle"></i> Formato no soportado. Use PDF o DOCX.',
+        "error"
+      );
+      microdisenoUploaded = false;
+      microdisenoFile = null;
+      microdisenoFileName.textContent = "";
+      microdisenoFileElement.value = "";
+      return;
+    }
+    console.log("Texto extraído:", texto);
     // Si deseas mostrarlo en un modal:
     // showTextModal("Vista previa del microdiseño", texto);
   } catch (err) {
-    console.error("Error al extraer texto del DOCX:", err);
-    showMessage('<i class="fas fa-exclamation-circle"></i> Error al procesar el archivo de Word', "error");
+    console.error("Error al extraer texto del archivo:", err);
+    showMessage('<i class="fas fa-exclamation-circle"></i> Error al procesar el archivo', "error");
+    microdisenoUploaded = false;
+    microdisenoFile = null;
+    microdisenoFileName.textContent = "";
+    microdisenoFileElement.value = "";
   }
 }
 
@@ -472,52 +539,85 @@ function updateSubmitButton() {
   }
 }
 
-// Función para enviar el reporte (incluye texto extraído del .docx)
+// Función para enviar el reporte (incluye texto extraído del .pdf o .docx)
 async function submitReport() {
   if (!selectedModule || !selectedTeacher) {
-    showMessage('<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente', "error");
+    showMessage(
+      '<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente',
+      "error"
+    );
     return;
   }
   if (!microdisenoFile) {
-    showMessage('<i class="fas fa-exclamation-triangle"></i> Debe subir el archivo de microdiseño', "error");
+    showMessage(
+      '<i class="fas fa-exclamation-triangle"></i> Debe subir el archivo de microdiseño',
+      "error"
+    );
     return;
   }
 
-  showMessage('<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...', "success");
+  showMessage(
+    '<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...',
+    "success"
+  );
 
   try {
-    // Extraemos el texto del Word (.docx)
-    const textoExtraido = await extractDocxText(microdisenoFile);
-    console.log("Texto extraído del DOCX:", textoExtraido);
+    // Extraemos el texto del Word o PDF
+    let textoExtraido;
+    if (microdisenoFile.type === "application/pdf") {
+      textoExtraido = await extractPdfText(microdisenoFile);
+    } else {
+      textoExtraido = await extractDocxText(microdisenoFile);
+    }
 
-    // Preparamos el payload con el texto legible
+    console.log("Texto extraído para envío:", textoExtraido);
+
+    // Preparamos el payload
     const payload = {
       modulo: selectedModule,
       docente: selectedTeacher,
-      sessionToken: sessionToken, // Incluir el token de sesión
+      sessionToken: sessionToken,
       microdiseno: {
         nombre: microdisenoFile.name,
         tipo: microdisenoFile.type,
-        contenido: textoExtraido // <-- texto de Word aquí
-      }
+        contenido: textoExtraido,
+      },
     };
 
-    const res = await fetch("https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9", {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(payload)
-    });
+    const res = await fetch(
+      "https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify(payload),
+      }
+    );
     if (!res.ok) throw new Error("Error en la respuesta del servidor");
 
     await res.text();
-    showMessage('<i class="fas fa-check-circle"></i> Reporte enviado correctamente', "success");
-    steps.forEach((s) => {
-      s.classList.add("completed");
-      s.classList.remove("active");
-    });
+    showMessage(
+      '<i class="fas fa-check-circle"></i> Reporte enviado correctamente',
+      "success"
+    );
+
+    // ---------- AQUÍ LIMPIAMOS EL ARCHIVO SUBIDO ----------
+    microdisenoFile = null;
+    microdisenoUploaded = false;
+    microdisenoFileElement.value = ""; // borrar selección en el input
+    microdisenoFileName.textContent = ""; // borrar nombre mostrado
+
+    // Deshabilitar nuevamente el botón de envío hasta que suban otro archivo
+    submitButton.disabled = true;
+
+    // Mantener visible la sección, sin ocultarla
+    updateStepIndicator(4);
   } catch (err) {
     console.error("Error en submitReport:", err);
-    showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' + err.message, "error");
+    showMessage(
+      '<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' +
+      err.message,
+      "error"
+    );
   }
 }
 
@@ -535,15 +635,55 @@ function showMessage(text, type) {
   }
 }
 
+// Función auxiliar: parsear "DD/MM/YYYY" a Date
+function parseDMY(str) {
+  const parts = str.split("/").map((p) => parseInt(p, 10));
+  // parts = [día, mes, año]
+  return new Date(parts[2], parts[1] - 1, parts[0]);
+}
+
+let needsAlert = false;
+// Función para reenviar a Make si existe alguna semana con fecha final < 31/05/2025
+async function checkAndResendOnce(data) {
+  if (resendAttempted) return;
+
+  // Umbral: 31/05/2025
+  const threshold = new Date(2025, 4, 31); // mes 4 = mayo
+  console.log(data);
+  // Recorrer cada grupo y cada entrada
+  let week;
+  for (const grupo in data) {
+    const arr = data[grupo];
+    for (const entry of arr) {
+      if (typeof entry.week === "string") {
+        // form: "DD/MM/YYYY - DD/MM/YYYY"
+
+        week = entry.week; // Tomamos la segunda fecha
+
+      }
+    }
+  }
+  const endDate = parseDMY(week);
+  console.log("Evaluando semana:", endDate);
+  if (endDate.getTime() < threshold.getTime()) {
+    needsAlert = true; // Marcar que hay semanas inválidas
+    return; // Salimos después del primer hallazgo
+  }
+
+}
+
 // Función para mostrar los datos del webhook en la tabla
 function displayWebhookData(data) {
   webhookTableBody.innerHTML = "";
 
-  // Iterar sobre cada grupo en los datos
+  // 1) Verificar y reenviar si corresponde (solo una vez)
+  checkAndResendOnce(data);
+
+  // 2) Construir filas. También, detectar si hay celdas a resaltar
+
   for (const groupId in data) {
     const groupData = data[groupId];
 
-    // Iterar sobre cada entrada en el grupo
     groupData.forEach((entry) => {
       const row = document.createElement("tr");
 
@@ -554,34 +694,35 @@ function displayWebhookData(data) {
         row.classList.add("error-row");
       }
 
-      // Crear celdas para cada columna
-
-      // Grupo
+      // CELDA 1: Grupo
       const groupCell = document.createElement("td");
       groupCell.textContent = groupId;
       row.appendChild(groupCell);
 
-      // Fecha de Clase
+      // CELDA 2: Fecha de Clase
       const dateCell = document.createElement("td");
       dateCell.textContent = entry.dateOfClass || "";
       row.appendChild(dateCell);
 
-      // Tema Dado
+      // CELDA 3: Tema Dado
       const temaDadoCell = document.createElement("td");
       temaDadoCell.textContent = entry.temaDado || "";
       row.appendChild(temaDadoCell);
 
-      // Tema Esperado
+      // CELDA 4: Tema Esperado
       const temaEsperadoCell = document.createElement("td");
       temaEsperadoCell.textContent = entry.temaEsperado || "";
       row.appendChild(temaEsperadoCell);
 
-      // Semana
+      // CELDA 5: Semana
       const weekCell = document.createElement("td");
       weekCell.textContent = entry.week || "";
+
+      // Si el formato es "DD/MM/YYYY - DD/MM/YYYY", evaluamos la segunda fecha
+
       row.appendChild(weekCell);
 
-      // Acciones (botones de Coherente e Incoherente)
+      // CELDA 6: Acciones (botones)
       const actionsCell = document.createElement("td");
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "action-buttons";
@@ -613,6 +754,13 @@ function displayWebhookData(data) {
       webhookTableBody.appendChild(row);
     });
   }
+
+  // 3) Si hubo alguna semana inválida (< 31/05/2025), mostrar alerta
+  if (needsAlert) {
+    alert("Por favor, vuelva a subir el microdiseño y enviar el reporte. Hubo un error.");
+    needsAlert = false; // Reiniciar la bandera para futuros envíos
+    webhookTableBody.innerHTML = ""; // Limpiar la tabla
+  }
 }
 
 // Función para enviar la solicitud de acción (Coherente/Incoherente)
@@ -623,7 +771,7 @@ function sendActionRequest(groupId, entry, color) {
     color: color,
     modulo: selectedModule,
     docente: selectedTeacher,
-    sessionToken: sessionToken // Incluir el token de sesión
+    sessionToken: sessionToken, // Incluir el token de sesión
   };
 
   // Mostrar mensaje de carga
