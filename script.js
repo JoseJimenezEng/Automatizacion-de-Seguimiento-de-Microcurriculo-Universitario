@@ -775,15 +775,15 @@ function addActionAndMaybeSend(groupId, entry, color) {
     docente: selectedTeacher,
     sessionToken
   });
-  console.log("Buffer de acciones pendiente:", pendingActions);
-
+  
   // Elimina la fila (esto ya lo hacías)
   // ... (tu código para row.remove())
-
+  
   // Si ya no quedan filas en la tabla, envía el lote
   const rowsLeft = webhookTableBody.querySelectorAll("tr").length;
   console.log("Filas restantes:", rowsLeft);
   if (rowsLeft === 1) {
+    console.log("Buffer de acciones pendiente:", pendingActions);
     sendBatchActions();
   }
 }
