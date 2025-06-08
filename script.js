@@ -108,6 +108,7 @@ function initWebhookConnection() {
       try {
         // 1) Limpiamos fetos de Markdown:
         let raw = event.data;
+        console.log("Datos recibidos del webhook:", raw);
         raw = raw.replace(/```json/g, "").replace(/```/g, "");
 
         // 2) Parseamos el JSON limpio
@@ -517,7 +518,7 @@ async function handleMicrodisenoUpload(event) {
       microdisenoFileElement.value = "";
       return;
     }
-    console.log("Texto extraído:", texto);
+    // console.log("Texto extraído:", texto);
     // Si deseas mostrarlo en un modal:
     // showTextModal("Vista previa del microdiseño", texto);
   } catch (err) {
@@ -570,7 +571,7 @@ async function submitReport() {
       textoExtraido = await extractDocxText(microdisenoFile);
     }
 
-    console.log("Texto extraído para envío:", textoExtraido);
+    // console.log("Texto extraído para envío:", textoExtraido);
 
     // Preparamos el payload
     const payload = {
@@ -649,7 +650,7 @@ async function checkAndResendOnce(data) {
 
   // Umbral: 31/05/2025
   const threshold = new Date(2025, 4, 31); // mes 4 = mayo
-  console.log(data);
+  // console.log(data);
   // Recorrer cada grupo y cada entrada
   let week;
   for (const grupo in data) {
@@ -664,7 +665,7 @@ async function checkAndResendOnce(data) {
     }
   }
   const endDate = parseDMY(week);
-  console.log("Evaluando semana:", endDate);
+  // console.log("Evaluando semana:", endDate);
   if (endDate.getTime() < threshold.getTime()) {
     needsAlert = true; // Marcar que hay semanas inválidas
     return; // Salimos después del primer hallazgo
