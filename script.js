@@ -692,7 +692,7 @@ function displayWebhookData(data) {
       // CELDA 5: Semana
       const weekCell = document.createElement("td");
       if(entry.week){
-        weekCell.textContent = entry.week;
+        weekCell.textContent = weekCell.textContent + entry.week;
       }else{
         needsAlert = true;
       }
