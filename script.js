@@ -676,7 +676,10 @@ function displayWebhookData(data) {
 
       // CELDA 2: Fecha de Clase
       const dateCell = document.createElement("td");
-      dateCell.textContent = entry.dateOfClass || "";
+      let dateClass = entry.dateOfClass;
+      let aux = dateClass.split("/");
+      dateClass = aux[1]+"/"+aux[0]+"/"+aux[2];
+      dateCell.textContent = dateClass || "";
       row.appendChild(dateCell);
 
       // CELDA 3: Tema Dado
