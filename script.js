@@ -693,8 +693,8 @@ function displayWebhookData(data) {
       const weekCell = document.createElement("td");
       weekCell.id = entry.week
       if(entry.week){
-        console.log(weekCell.textContent)
-        weekCell.textContent = weekCell.textContent + entry.week;
+        
+        weekCell.textContent = document.getElementById(weekCell.textContent).textContent + entry.week;
         console.log(weekCell.textContent)
       }else{
         needsAlert = true;
