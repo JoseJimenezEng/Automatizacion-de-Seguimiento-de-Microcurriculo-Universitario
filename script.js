@@ -733,7 +733,7 @@ function displayWebhookData(data) {
       coherentBtn.className = "btn-check";
       coherentBtn.innerHTML = '<i class="fas fa-check"></i> Coherente';
       coherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, "");
+        addActionAndMaybeSend(groupId, entry, "x", "", "");
         row.remove();
       };
       actionsDiv.appendChild(coherentBtn);
@@ -743,7 +743,7 @@ function displayWebhookData(data) {
       incoherentBtn.className = "btn-x";
       incoherentBtn.innerHTML = '<i class="fas fa-times"></i> Incoherente';
       incoherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, `el tema dado ${
+        addActionAndMaybeSend(groupId, entry, "", "x",  `el tema dado ${
           entry.temaDado || "(Vacío)"
         } NO es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
         row.remove();
@@ -767,16 +767,16 @@ function displayWebhookData(data) {
 }
 
 // Función para enviar la solicitud de acción (Coherente/Incoherente)
-function addActionAndMaybeSend(groupId, entry, color) {
+function addActionAndMaybeSend(groupId, entry, obser1, obser2, color) {
   // Empuja al array de pendientes
   pendingActions.push({
     modulo: selectedModule,
     groupId,
     docente: selectedTeacher,
     fechaClase: entry.dateOfClass,
-    obser1: color == "" ? "x" : "",
-    obser2: color !== "" ? "x" : "",
-    obser3: color == "" ? "" : color,
+    obser1: obser1,
+    obser2: obser2,
+    obser3: color,
 
   });
   
