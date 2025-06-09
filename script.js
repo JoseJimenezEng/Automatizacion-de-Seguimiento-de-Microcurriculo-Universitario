@@ -737,9 +737,9 @@ function displayWebhookData(data) {
 
   // 3) Si hubo alguna semana inválida (< 31/05/2025), mostrar alerta
   if (needsAlert) {
-    alert("Por favor, vuelva a subir el microdiseño y enviar el reporte. Hubo un error.");
+    alert("Por favor, confirme las fechas manualmente, pues según el microdiseño no se registran clases en las semana final (25 de Mayo a 31 de Mayo).");
     needsAlert = false; // Reiniciar la bandera para futuros envíos
-    webhookTableBody.innerHTML = ""; // Limpiar la tabla
+    
   }
 }
 
