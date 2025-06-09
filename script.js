@@ -733,7 +733,9 @@ function displayWebhookData(data) {
       coherentBtn.className = "btn-check";
       coherentBtn.innerHTML = '<i class="fas fa-check"></i> Coherente';
       coherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, false);
+        addActionAndMaybeSend(groupId, entry, `el tema dado ${
+          entry.temaDado || "(Vacío)"
+        } es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
         row.remove();
       };
       actionsDiv.appendChild(coherentBtn);
