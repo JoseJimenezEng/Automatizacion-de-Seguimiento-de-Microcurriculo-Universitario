@@ -733,9 +733,7 @@ function displayWebhookData(data) {
       coherentBtn.className = "btn-check";
       coherentBtn.innerHTML = '<i class="fas fa-check"></i> Coherente';
       coherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, `el tema dado ${
-          entry.temaDado || "(Vacío)"
-        } es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
+        addActionAndMaybeSend(groupId, entry, "");
         row.remove();
       };
       actionsDiv.appendChild(coherentBtn);
@@ -745,7 +743,9 @@ function displayWebhookData(data) {
       incoherentBtn.className = "btn-x";
       incoherentBtn.innerHTML = '<i class="fas fa-times"></i> Incoherente';
       incoherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, true);
+        addActionAndMaybeSend(groupId, entry, `el tema dado ${
+          entry.temaDado || "(Vacío)"
+        } es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
         row.remove();
       };
       actionsDiv.appendChild(incoherentBtn);
