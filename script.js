@@ -657,19 +657,22 @@ async function checkAndResendOnce(data) {
     const arr = data[grupo];
     for (const entry of arr) {
       if (typeof entry.week === "string") {
-        // form: "DD/MM/YYYY - DD/MM/YYYY"
 
-        week = entry.week; // Tomamos la segunda fecha
+        week = entry.week; 
+        console.log("Semana: "+week)
+        if (endDate.getTime() == "") {
+          needsAlert = true; 
+          return; 
+        }
 
       }
     }
   }
-  const endDate = parseDMY(week);
   // console.log("Evaluando semana:", endDate);
-  if (endDate.getTime() < threshold.getTime()) {
-    needsAlert = true; // Marcar que hay semanas inválidas
-    return; // Salimos después del primer hallazgo
-  }
+  // if (endDate.getTime() < threshold.getTime()) {
+  //   needsAlert = true; // Marcar que hay semanas inválidas
+  //   return; // Salimos después del primer hallazgo
+  // }
 
 }
 
@@ -743,9 +746,8 @@ function displayWebhookData(data) {
       incoherentBtn.className = "btn-x";
       incoherentBtn.innerHTML = '<i class="fas fa-times"></i> Incoherente';
       incoherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, "", "x",  `el tema dado ${
-          entry.temaDado || "(Vacío)"
-        } NO es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
+        addActionAndMaybeSend(groupId, entry, "", "x", `el tema dado ${entry.temaDado || "(Vacío)"
+          } NO es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
         row.remove();
       };
       actionsDiv.appendChild(incoherentBtn);
@@ -779,10 +781,10 @@ function addActionAndMaybeSend(groupId, entry, obser1, obser2, color) {
     obser3: color,
 
   });
-  
+
   // Elimina la fila (esto ya lo hacías)
   // ... (tu código para row.remove())
-  
+
   // Si ya no quedan filas en la tabla, envía el lote
   const rowsLeft = webhookTableBody.querySelectorAll("tr").length;
   console.log("Filas restantes:", rowsLeft);
@@ -808,7 +810,7 @@ async function sendBatchActions() {
       "https://hook.us2.make.com/qefil1n1twwp97kczuuw4ugbvn6sr2es",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" , "sessionToken": sessionToken },
+        headers: { "Content-Type": "application/json", "sessionToken": sessionToken },
         body: JSON.stringify(pendingActions),
       }
     );
