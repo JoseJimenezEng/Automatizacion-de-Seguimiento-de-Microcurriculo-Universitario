@@ -647,7 +647,7 @@ function parseDMY(str) {
 let needsAlert = false;
 // Función para reenviar a Make si existe alguna semana con fecha final < 31/05/2025
 
-
+let id = "03/02/2025";
 // Función para mostrar los datos del webhook en la tabla
 function displayWebhookData(data) {
   webhookTableBody.innerHTML = "";
@@ -691,15 +691,14 @@ function displayWebhookData(data) {
 
       // CELDA 5: Semana
       const weekCell = document.createElement("td");
-      weekCell.id = entry.week
+      
       if(entry.week){
-        
-        weekCell.textContent = document.getElementById(weekCell.textContent).textContent + entry.week;
-        console.log(weekCell.textContent)
+        weekCell.textContent = id + entry.week;
       }else{
         needsAlert = true;
       }
-
+      
+       id  = entry.week
       // Si el formato es "DD/MM/YYYY - DD/MM/YYYY", evaluamos la segunda fecha
 
       row.appendChild(weekCell);
