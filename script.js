@@ -691,6 +691,7 @@ function displayWebhookData(data) {
 
       // CELDA 5: Semana
       const weekCell = document.createElement("td");
+      weekCell.id = entry.week
       if(entry.week){
         console.log(weekCell.textContent)
         weekCell.textContent = weekCell.textContent + entry.week;
