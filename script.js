@@ -646,42 +646,13 @@ function parseDMY(str) {
 
 let needsAlert = false;
 // Función para reenviar a Make si existe alguna semana con fecha final < 31/05/2025
-async function checkAndResendOnce(data) {
 
-  // Umbral: 31/05/2025
-  const threshold = new Date(2025, 4, 31); // mes 4 = mayo
-  // console.log(data);
-  // Recorrer cada grupo y cada entrada
-  let week;
-  for (const grupo in data) {
-    const arr = data[grupo];
-    for (const entry of arr) {
-      if (typeof entry.week === "string") {
-
-        week = entry.week; 
-        console.log("Semana: "+week)
-        if (week == "") {
-          needsAlert = true; 
-          return; 
-        }
-
-      }
-    }
-  }
-  // console.log("Evaluando semana:", endDate);
-  // if (endDate.getTime() < threshold.getTime()) {
-  //   needsAlert = true; // Marcar que hay semanas inválidas
-  //   return; // Salimos después del primer hallazgo
-  // }
-
-}
 
 // Función para mostrar los datos del webhook en la tabla
 function displayWebhookData(data) {
   webhookTableBody.innerHTML = "";
 
   // 1) Verificar y reenviar si corresponde (solo una vez)
-  checkAndResendOnce(data);
 
   // 2) Construir filas. También, detectar si hay celdas a resaltar
 
@@ -720,7 +691,11 @@ function displayWebhookData(data) {
 
       // CELDA 5: Semana
       const weekCell = document.createElement("td");
-      weekCell.textContent = entry.week || "";
+      if(entry.week){
+        weekCell.textContent = entry.week;
+      }else{
+        needsAlert = true;
+      }
 
       // Si el formato es "DD/MM/YYYY - DD/MM/YYYY", evaluamos la segunda fecha
 
