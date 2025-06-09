@@ -660,7 +660,7 @@ async function checkAndResendOnce(data) {
 
         week = entry.week; 
         console.log("Semana: "+week)
-        if (endDate.getTime() == "") {
+        if (week.getTime() == "") {
           needsAlert = true; 
           return; 
         }
