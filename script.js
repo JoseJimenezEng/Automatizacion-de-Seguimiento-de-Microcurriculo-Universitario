@@ -770,12 +770,14 @@ function displayWebhookData(data) {
 function addActionAndMaybeSend(groupId, entry, color) {
   // Empuja al array de pendientes
   pendingActions.push({
-    ...entry,
-    groupId,
-    color,
     modulo: selectedModule,
+    groupId,
     docente: selectedTeacher,
-    sessionToken
+    fechaClase: entry.dateOfClass,
+    obser1: color == "" ? "x" : "",
+    obser2: color !== "" ? "" : "x",
+    obser3: color == "" ? "" : color,
+
   });
   
   // Elimina la fila (esto ya lo hacías)
@@ -806,7 +808,7 @@ async function sendBatchActions() {
       "https://hook.us2.make.com/qefil1n1twwp97kczuuw4ugbvn6sr2es",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" , "sessionToken": sessionToken },
         body: JSON.stringify(pendingActions),
       }
     );
