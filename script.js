@@ -745,7 +745,7 @@ function displayWebhookData(data) {
       incoherentBtn.onclick = () => {
         addActionAndMaybeSend(groupId, entry, `el tema dado ${
           entry.temaDado || "(Vacío)"
-        } es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
+        } NO es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
         row.remove();
       };
       actionsDiv.appendChild(incoherentBtn);
@@ -775,7 +775,7 @@ function addActionAndMaybeSend(groupId, entry, color) {
     docente: selectedTeacher,
     fechaClase: entry.dateOfClass,
     obser1: color == "" ? "x" : "",
-    obser2: color !== "" ? "" : "x",
+    obser2: color !== "" ? "x" : "",
     obser3: color == "" ? "" : color,
 
   });
