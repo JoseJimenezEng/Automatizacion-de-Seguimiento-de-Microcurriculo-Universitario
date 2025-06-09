@@ -773,7 +773,7 @@ function addActionAndMaybeSend(groupId, entry, obser1, obser2, color) {
     modulo: selectedModule,
     groupId,
     docente: selectedTeacher,
-    fechaClase: entry.dateOfClass,
+    fechaClase: entry.dateOfClass.toString(),
     obser1: obser1,
     obser2: obser2,
     obser3: color,
