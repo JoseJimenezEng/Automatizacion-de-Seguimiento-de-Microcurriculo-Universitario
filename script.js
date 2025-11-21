@@ -16,7 +16,7 @@ let sessionToken = null;
 // Para reenviar a Make SOLO UNA VEZ
 
 // Usuarios válidos para la credencial
-const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian"];
+const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian", "Yolanda", "Yesika", "Mariana"];
 
 // PEDIR TOKEN AL USUARIO ANTES DE CARGAR LA PÁGINA
 // Mostrar el modal al cargar
