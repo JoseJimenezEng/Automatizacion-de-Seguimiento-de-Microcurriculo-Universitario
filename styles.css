@@ -1004,3 +1004,51 @@ button:disabled {
 }
 
 
+.modal-title {
+  margin-bottom: 20px;
+  color: #2c3e50;
+  font-size: 24px;
+}
+
+/* Agregado estilos para el dropdown de token */
+.token-select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #003e7e;
+  border-radius: 8px;
+  font-size: 16px;
+  margin-bottom: 20px;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.token-select:hover {
+  border-color: #0056b3;
+}
+
+.token-select:focus {
+  outline: none;
+  border-color: #0056b3;
+  box-shadow: 0 0 0 3px rgba(0, 62, 126, 0.1);
+}
+
+.token-select option {
+  padding: 10px;
+}
+
+/* Mantener compatibilidad con el input antiguo si se necesita */
+.token-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.token-input:focus {
+  outline: none;
+  border-color: #3498db;
+}
