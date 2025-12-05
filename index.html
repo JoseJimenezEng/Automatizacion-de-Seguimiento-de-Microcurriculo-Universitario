@@ -21,11 +21,20 @@
 
 <body>
     <!-- Modal de login de sesión -->
+<!-- Cambiado input de texto por dropdown de usuarios -->
 <div id="tokenModal" class="modal">
   <div class="modal-content token-modal-content">
-    <h3 class="modal-title">Ingrese su usuario</h3>
-    <p>Usuarios permitidos: Valeria, Marlene, Juliana, Cristian, Mariana, Yolanda, Yesika.</p>
-    <input type="text" id="tokenInput" class="token-input" placeholder="Escriba su usuario aquí" />
+    <h3 class="modal-title">Seleccione su usuario</h3>
+    <select id="tokenInput" class="token-select">
+      <option value="">Seleccione un usuario</option>
+      <option value="Valeria">Valeria</option>
+      <option value="Marlene">Marlene</option>
+      <option value="Juliana">Juliana</option>
+      <option value="Cristian">Cristian</option>
+      <option value="Mariana">Mariana</option>
+      <option value="Yolanda">Yolanda</option>
+      <option value="Yesika">Yesika</option>
+    </select>
     <div class="modal-footer">
       <button id="tokenSubmit" class="btn"><i class="fas fa-sign-in-alt"></i> Entrar</button>
     </div>
