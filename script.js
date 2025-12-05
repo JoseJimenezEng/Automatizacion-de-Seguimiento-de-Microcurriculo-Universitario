@@ -306,7 +306,6 @@ async function handleMicrodisenoUpload(event) {
     }
   } catch (err) {
     console.error("Error al extraer texto del archivo:", err)
-    alert("Algo salió mal. Por favor, intente nuevamente.")
     showMessage('<i class="fas fa-exclamation-circle"></i> Error al procesar el archivo', "error")
     microdisenoUploaded = false
     microdisenoFile = null
@@ -387,7 +386,6 @@ async function submitReport() {
     submitButton.disabled = true
   } catch (err) {
     if (!iaActivada) {
-      alert("Algo salió mal. Por favor, intente nuevamente.")
       console.error("Error al enviar el reporte:", err)
       showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' + err.message, "error")
     }
@@ -484,14 +482,15 @@ function createClassComparison(weeklyData) {
 
     const tbody = document.getElementById(`comparison-body-${grupo}`)
 
-    const usedWeeks = new Set()
+    // const usedWeeks = new Set() // Eliminado el Set de usedWeeks ya que ahora permitimos múltiples clases por semana
 
     clasesOrdenadas.forEach((clase, index) => {
       const fechaClase = formatExcelDate(clase["Fecha de Clase"])
       const temaDado = clase["Tema"] || ""
       const docente = clase["Docente"] || ""
 
-      const matchedWeek = findMatchingWeekByDate(fechaClase, weeklyArray, usedWeeks)
+      // const matchedWeek = findMatchingWeekByDate(fechaClase, weeklyArray, usedWeeks) // Pasamos null en lugar de usedWeeks para que no filtre semanas
+      const matchedWeek = findMatchingWeekByDate(fechaClase, weeklyArray, null)
 
       let temaEsperado = ""
       let fechaEstimada = ""
@@ -499,7 +498,7 @@ function createClassComparison(weeklyData) {
       if (matchedWeek) {
         temaEsperado = matchedWeek.tema.replace("Tema:", "").trim()
         fechaEstimada = `${matchedWeek.fechaInicio} - ${matchedWeek.fechaFin}`
-        usedWeeks.add(matchedWeek.semana)
+        // usedWeeks.add(matchedWeek.semana) // Ya no marcamos semanas como "usadas" para permitir múltiples asignaciones
       }
 
       const rowId = `row-${grupo}-${index}`
@@ -664,7 +663,6 @@ async function submitAllCoherencias() {
     }, 1000)
   } catch (err) {
     console.error("[v0] Error al enviar evaluaciones:", err)
-    alert("Algo salió mal. Por favor, intente nuevamente.")
     showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar evaluaciones: ' + err.message, "error")
   }
 }
@@ -678,10 +676,6 @@ function findMatchingWeekByDate(fechaClase, weeklyArray, usedWeeks = new Set()) 
   let smallestDifference = Number.POSITIVE_INFINITY
 
   for (const week of weeklyArray) {
-    if (usedWeeks.has(week.semana)) {
-      continue
-    }
-
     const startParts = week.fechaInicio.split("/")
     const startDate = new Date(startParts[2], startParts[1] - 1, startParts[0])
     startDate.setHours(0, 0, 0, 0)
@@ -765,7 +759,6 @@ async function sendCoherencia(docente, temaDado, temaEsperado, coherencia, grupo
     }, 1000)
   } catch (err) {
     console.error("[v0] Error al enviar coherencia:", err)
-    alert("Algo salió mal. Por favor, intente nuevamente.")
     showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar evaluación: ' + err.message, "error")
   }
 }
@@ -775,5 +768,3 @@ window.addEventListener("load", () => {
 })
 
 console.log("Sistema de automatización inicializado correctamente")
-
- 
