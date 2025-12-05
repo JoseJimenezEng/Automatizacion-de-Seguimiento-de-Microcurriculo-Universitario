@@ -619,7 +619,10 @@ function checkAllSelectionsComplete() {
   document.getElementById("selectionsCount").textContent = selectedCount
 
   const finalBtn = document.getElementById("finalSubmitBtn")
-  if (selectedCount === totalRows) {
+  if (totalRows === 0) {
+    finalBtn.disabled = true
+    finalBtn.classList.remove("enabled")
+  } else if (selectedCount === totalRows) {
     finalBtn.disabled = false
     finalBtn.classList.add("enabled")
   } else {
@@ -630,6 +633,8 @@ function checkAllSelectionsComplete() {
 
 async function submitAllCoherencias() {
   const selectionsArray = Object.values(coherenciaSelections)
+  button = document.getElementById("finalSubmitBtn")
+  button.disabled = true
 
   if (selectionsArray.length === 0) {
     showMessage('<i class="fas fa-exclamation-circle"></i> No hay evaluaciones para enviar', "error")
@@ -754,9 +759,6 @@ async function sendCoherencia(docente, temaDado, temaEsperado, coherencia, grupo
 
     showMessage(`<i class="fas fa-check-circle"></i> Reporte enviado con éxito`, "success", 1000)
 
-    setTimeout(() => {
-      clearAllColumns()
-    }, 1000)
   } catch (err) {
     console.error("[v0] Error al enviar coherencia:", err)
     showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar evaluación: ' + err.message, "error")
