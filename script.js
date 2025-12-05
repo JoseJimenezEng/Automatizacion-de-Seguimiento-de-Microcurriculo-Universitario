@@ -1,580 +1,351 @@
 // Variables globales
-// Al principio de tu script (junto a las demás variables globales)
-let pendingActions = [];
-let excelData = [];
-let selectedModule = "";
-let selectedTeacher = "";
-let microdisenoUploaded = false;
-let currentStep = 1;
-let webhookData = null;
-let notificationCount = 0;
-let eventSource = null;
-// Añadir una variable global para almacenar el archivo de microdiseño
-let microdisenoFile = null;
-let sessionToken = null;
-
-// Para reenviar a Make SOLO UNA VEZ
-
-// Usuarios válidos para la credencial
-const validUsers = ["Valeria", "Marlene", "Juliana", "Cristian", "Yolanda", "Yesika", "Mariana"];
-
-// PEDIR TOKEN AL USUARIO ANTES DE CARGAR LA PÁGINA
-// Mostrar el modal al cargar
-window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("tokenModal").style.display = "flex";
-});
-
-// Al hacer clic en Entrar
-document.getElementById("tokenSubmit").addEventListener("click", () => {
-  const input = document.getElementById("tokenInput").value.trim();
-  if (!validUsers.includes(input)) {
-    alert("Credencial inválida. Use: " + validUsers.join(", "));
-    return;
-  }
-  sessionToken = input;
-  // ocultar modal y continuar
-  document.getElementById("tokenModal").style.display = "none";
-  initWebhookConnection();
-});
+let excelData = []
+let selectedModule = ""
+let selectedTeacher = ""
+let microdisenoFile = null
+let microdisenoUploaded = false
+let sessionToken = ""
+let coherenciaSelections = {} // Agregar variable global para rastrear selecciones
+let webhookData = null // Agregar variable global para almacenar datos del webhook
+let iaActivada = false // Variable global para el estado del toggle de IA
 
 // Elementos del DOM
-const excelFileInput = document.getElementById("excelFile");
-const excelFileName = document.getElementById("excelFileName");
-const moduleSelect = document.getElementById("moduleSelect");
-const teacherSelect = document.getElementById("teacherSelect");
-const resultsSection = document.getElementById("resultsSection");
-const resultsBody = document.getElementById("resultsBody");
-const microdisenoSection = document.getElementById("microdisenoSection");
-const microdisenoFileElement = document.getElementById("microdisenoFile");
-const microdisenoFileName = document.getElementById("microdisenoFileName");
-const submitSection = document.getElementById("submitSection");
-const submitButton = document.getElementById("submitButton");
-const messageDiv = document.getElementById("message");
-const steps = document.querySelectorAll(".step");
+let excelFileElement
+let excelFileName
+let moduleSelect
+let teacherSelect
+let resultsSection
+let resultsBody
+let microdisenoSection
+let microdisenoFileElement
+let microdisenoFileName
+let submitSection
+let submitButton
+let messageDiv
+let tokenModal
+let tokenInput
+let tokenSubmit
+let finalSubmitContainer // Variable para el contenedor del botón final
+let iaToggle // Variable para el toggle de IA
+let iaToggleText // Variable para el texto del toggle de IA
 
-// Elementos del webhook
-const webhookResults = document.getElementById("webhookResults");
-const webhookTableBody = document.getElementById("webhookTableBody");
-const statusDot = document.getElementById("statusDot");
-const statusText = document.getElementById("statusText");
-const notificationBadge = document.getElementById("notificationBadge");
-const copyUrlBtn = document.getElementById("copyUrlBtn");
+// Librerías necesarias
+// const XLSX = require("xlsx")
+// const pdfjsLib = require("pdfjs-dist")
+// const mammoth = require("mammoth")
 
-// Elementos del modal de texto (para mostrar observaciones completas, etc.)
-const textModal = document.getElementById("textModal");
-const modalTitle = document.getElementById("modalTitle");
-const modalBody = document.getElementById("modalBody");
-const closeModalButton = document.getElementById("closeModalButton");
-const closeModalX = document.querySelector(".close-modal");
+// Función para escapar comillas simples en cadenas
+function escapeQuotes(str) {
+  return str.replace(/'/g, "\\'")
+}
 
-// Event Listeners
-excelFileInput.addEventListener("change", handleExcelUpload);
-moduleSelect.addEventListener("change", handleModuleChange);
-teacherSelect.addEventListener("change", handleTeacherChange);
-microdisenoFileElement.addEventListener("change", handleMicrodisenoUpload);
-submitButton.addEventListener("click", submitReport);
-closeModalButton.addEventListener("click", closeModal);
-closeModalX.addEventListener("click", closeModal);
-copyUrlBtn.addEventListener("click", copyWebhookUrl);
-
-// Función para inicializar la conexión del webhook usando Server-Sent Events (SSE)
-function initWebhookConnection() {
-  if (!sessionToken) {
-    console.error("No se proporcionó ningún token de sesión.");
-    statusDot.classList.remove("online");
-    statusDot.classList.add("offline");
-    statusText.textContent = "Token no válido";
-    return;
+function clearAllColumns() {
+  const comparisonSection = document.getElementById("comparisonSection")
+  if (comparisonSection) {
+    comparisonSection.remove()
   }
 
-  // URL del servidor de webhook
-  const serverUrl = "https://proyectousa.onrender.com";
+  coherenciaSelections = {}
+  finalSubmitContainer = null
+}
 
-  try {
-    // Crear una conexión SSE con el token de sesión proporcionado por el usuario
-    eventSource = new EventSource(
-      `${serverUrl}/events?token=${encodeURIComponent(sessionToken)}`
-    );
+// Inicialización cuando el DOM esté listo
+document.addEventListener("DOMContentLoaded", () => {
+  // Obtener referencias a elementos del DOM
+  excelFileElement = document.getElementById("excelFile")
+  excelFileName = document.getElementById("excelFileName")
+  moduleSelect = document.getElementById("moduleSelect")
+  teacherSelect = document.getElementById("teacherSelect")
+  resultsSection = document.getElementById("resultsSection")
+  resultsBody = document.getElementById("resultsBody")
+  microdisenoSection = document.getElementById("microdisenoSection")
+  microdisenoFileElement = document.getElementById("microdisenoFile")
+  microdisenoFileName = document.getElementById("microdisenoFileName")
+  submitSection = document.getElementById("submitSection")
+  submitButton = document.getElementById("submitButton")
+  messageDiv = document.getElementById("message")
+  tokenModal = document.getElementById("tokenModal")
+  tokenInput = document.getElementById("tokenInput")
+  tokenSubmit = document.getElementById("tokenSubmit")
+  finalSubmitContainer = document.getElementById("finalSubmitContainer") // Obtener referencia al contenedor del botón final
+  iaToggle = document.getElementById("iaToggle") // Obtener referencia al toggle de IA
+  iaToggleText = document.getElementById("iaToggleText") // Obtener referencia al texto del toggle de IA
 
-    // Manejar el evento de conexión abierta
-    eventSource.onopen = () => {
-      console.log("Conexión SSE establecida");
-      statusDot.classList.remove("offline");
-      statusDot.classList.add("online");
-      statusText.textContent = "Webhook conectado";
-    };
+  // Event Listeners
+  excelFileElement.addEventListener("change", handleExcelUpload)
+  moduleSelect.addEventListener("change", handleModuleChange)
+  teacherSelect.addEventListener("change", handleTeacherChange)
+  microdisenoFileElement.addEventListener("change", handleMicrodisenoUpload)
+  submitButton.addEventListener("click", submitReport) // Corregido el evento de escucha
+  tokenSubmit.addEventListener("click", handleTokenSubmit)
+  iaToggle.addEventListener("click", () => {
+    iaActivada = !iaActivada
+    iaToggle.setAttribute("data-active", iaActivada.toString())
 
-    // Manejar el evento de mensaje recibido
-    eventSource.addEventListener("webhook-data", (event) => {
-      try {
-        // 1) Limpiamos fetos de Markdown:
-        let raw = event.data;
-        // console.log("Datos recibidos del webhook:", raw);
-        raw = raw.replace(/```json/g, "").replace(/```/g, "");
-
-        // 2) Parseamos el JSON limpio
-        const data = JSON.parse(raw);
-
-        handleWebhookData(data);
-      } catch (error) {
-        console.error("Error al procesar los datos del webhook:", error);
-      }
-    });
-
-    // Manejar errores de conexión
-    eventSource.onerror = () => {
-      console.error("Error en la conexión SSE");
-      statusDot.classList.remove("online");
-      statusDot.classList.add("offline");
-      statusText.textContent = "Webhook desconectado";
-
-      // Intentar reconectar después de 5 segundos
+    if (iaActivada) {
+      iaToggleText.textContent = "IA Activada"
+      // Cuando se activa, ejecutar clearAllColumns después de 1 segundo
       setTimeout(() => {
-        if (eventSource.readyState === EventSource.CLOSED) {
-          initWebhookConnection();
-        }
-      }, 5000);
-    };
-  } catch (error) {
-    console.error("Error al inicializar la conexión SSE:", error);
-    statusDot.classList.remove("online");
-    statusDot.classList.add("offline");
-    statusText.textContent = "Error de conexión";
-
-    // Para fines de demostración, simular la recepción de datos después de 5 segundos
-    setTimeout(simulateWebhookData, 5000);
-  }
-}
-
-function formatExcelDate(excelDate) {
-  if (!excelDate || isNaN(excelDate)) return excelDate;
-
-  // Excel cuenta los días desde el 1 de enero de 1900
-  const excelStartDate = new Date(1900, 0, 1);
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  const actualDate = new Date(
-    excelStartDate.getTime() + (excelDate - 2) * millisecondsPerDay
-  );
-
-  // Formatear como DD/MM/YYYY
-  const day = actualDate.getDate().toString().padStart(2, "0");
-  const month = (actualDate.getMonth() + 1).toString().padStart(2, "0");
-  const year = actualDate.getFullYear();
-
-  return `${day}/${month}/${year}`;
-}
-
-function formatExcelTime(excelTime) {
-  if (!excelTime || isNaN(excelTime)) return excelTime;
-
-  // Excel almacena las horas como fracciones de día
-  const totalMinutes = Math.round(excelTime * 24 * 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${hours.toString().padStart(2, "0")}:${minutes.n
-    .toString().padStart(2, "0")}`;
-}
-
-// Función para simular la recepción de datos (solo para demostración)
-function simulateWebhookData() {
-  // Datos de ejemplo
-  const exampleData = {
-    "DERE0042-R02": [
-      {
-        temaDado:
-          "Presentación del Micro currículo, socialización Tema: Introducción a la Historia de la Filosofía del Derecho Concepto – utilidad- objeto -relación con otras ciencias",
-        temaEsperado:
-          "Bienvenida al curso y presentación de la clase y presentación del contenido programático",
-        success: true,
-        week: "02/06/2025 - 02/07/2025",
-        dateOfClass: "2/6/2025",
-        observations: "None",
-      },
-      {
-        temaDado: "Concepto de Filosofía del Derecho",
-        temaEsperado: "Concepto de Filosofía del Derecho",
-        success: true,
-        week: "02/13/2025 - 02/14/2025",
-        dateOfClass: "2/13/2025",
-        observations: "None",
-      },
-    ],
-    "DERE0042-R03": [
-      {
-        temaDado: "Introducción a la materia",
-        temaEsperado: "Presentación del curso y metodología",
-        success: false,
-        week: "02/06/2025 - 02/07/2025",
-        dateOfClass: "2/7/2025",
-        observations: "None",
-      },
-    ],
-  };
-
-  // Procesar los datos simulados
-  handleWebhookData(exampleData);
-
-  // Cambiar el estado a conectado
-  statusDot.classList.remove("offline");
-  statusDot.classList.add("online");
-  statusText.textContent = "Webhook conectado (simulado)";
-}
-
-// Función para manejar los datos recibidos por el webhook
-function handleWebhookData(data) {
-  webhookData = data;
-
-  // Incrementar contador de notificaciones
-  notificationCount++;
-  notificationBadge.textContent = notificationCount;
-  notificationBadge.classList.remove("hidden");
-
-  // Mostrar los datos en la tabla
-  displayWebhookData(data);
-
-  // Mostrar la sección de resultados
-  webhookResults.classList.remove("hidden");
-
-  // Mostrar mensaje de notificación
-  showMessage('<i class="fas fa-bell"></i> Nuevos datos recibidos por webhook', "success");
-}
-
-// Función para actualizar el indicador de pasos
-function updateStepIndicator(step) {
-  currentStep = step;
-
-  steps.forEach((stepEl, index) => {
-    const stepNum = index + 1;
-
-    if (stepNum < step) {
-      stepEl.classList.add("completed");
-      stepEl.classList.remove("active");
-    } else if (stepNum === step) {
-      stepEl.classList.add("active");
-      stepEl.classList.remove("completed");
+        clearAllColumns()
+      }, 1000)
     } else {
-      stepEl.classList.remove("active", "completed");
+      iaToggleText.textContent = "IA Desactivada"
     }
-  });
+
+    console.log("[v0] IA Activada:", iaActivada)
+  })
+
+  // Mostrar modal de token al cargar
+  tokenModal.style.display = "block"
+
+  // Permitir presionar Enter en el input del token
+  tokenInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      handleTokenSubmit()
+    }
+  })
+
+  updateStepIndicator(1)
+})
+
+// Manejar el envío del token de sesión
+function handleTokenSubmit() {
+  const token = tokenInput.value.trim()
+  if (!token) {
+    alert("Por favor ingrese su usuario")
+    return
+  }
+
+  // Validar usuarios permitidos
+  const allowedUsers = ["Valeria", "Marlene", "Juliana", "Cristian", "Mariana", "Yolanda", "Yesika"]
+  if (!allowedUsers.includes(token)) {
+    alert("Usuario no permitido. Usuarios válidos: " + allowedUsers.join(", "))
+    return
+  }
+
+  sessionToken = token
+  tokenModal.style.display = "none"
+  showMessage('<i class="fas fa-check-circle"></i> Sesión iniciada como ' + token, "success")
 }
 
-// Función para manejar la carga del archivo Excel
+// Actualizar indicador de pasos
+function updateStepIndicator(currentStep) {
+  const steps = document.querySelectorAll(".step")
+  steps.forEach((step, index) => {
+    const stepNumber = index + 1
+    step.classList.remove("active", "completed")
+
+    if (stepNumber < currentStep) {
+      step.classList.add("completed")
+    } else if (stepNumber === currentStep) {
+      step.classList.add("active")
+    }
+  })
+}
+
+// Manejar carga de archivo Excel
 function handleExcelUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+  const file = event.target.files[0]
+  if (!file) return
 
-  excelFileName.textContent = file.name;
+  excelFileName.textContent = file.name
 
-  const reader = new FileReader();
+  const reader = new FileReader()
   reader.onload = (e) => {
-    try {
-      const data = new Uint8Array(e.target.result);
-      // XLSX ya está disponible globalmente desde el script en el HTML
-      const workbook = XLSX.read(data, { type: "array" });
+    const data = new Uint8Array(e.target.result)
+    const workbook = window.XLSX.read(data, { type: "array" }) // Assuming XLSX is loaded via script tag
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+    excelData = window.XLSX.utils.sheet_to_json(firstSheet) // Assuming XLSX is loaded via script tag
 
-      // Asumimos que los datos están en la primera hoja
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-
-      // Convertir a JSON
-      excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-      // Verificar si hay datos y si tienen el formato esperado
-      if (excelData.length < 2) {
-        showMessage("El archivo no contiene datos suficientes", "error");
-        return;
-      }
-
-      // Asumimos que la primera fila son los encabezados
-      const headers = excelData[0];
-
-      // Verificar si los encabezados son los esperados
-      const expectedHeaders = [
-        "Módulo",
-        "Grupo",
-        "Docente",
-        "Fecha de Clase",
-        "Tema",
-        "Fecha Ingreso",
-        "Hrs. Clase",
-        "Hora Ingreso",
-      ];
-      const hasExpectedFormat = expectedHeaders.every((header) =>
-        headers.includes(header)
-      );
-
-      if (!hasExpectedFormat) {
-        showMessage("El formato del archivo no es el esperado", "error");
-        return;
-      }
-
-      // Procesar los datos para obtener módulos y docentes únicos
-      processExcelData();
-
-      // Actualizar el indicador de pasos
-      updateStepIndicator(2);
-    } catch (error) {
-      console.error("Error al procesar el archivo:", error);
-      showMessage(
-        "Error al procesar el archivo. Asegúrese de que sea un archivo Excel válido.",
-        "error"
-      );
-    }
-  };
-
-  reader.readAsArrayBuffer(file);
+    populateDropdowns()
+    updateStepIndicator(2)
+  }
+  reader.readAsArrayBuffer(file)
 }
 
-// Función para procesar los datos del Excel
-function processExcelData() {
-  if (excelData.length < 2) return;
+// Poblar los dropdowns con datos únicos
+function populateDropdowns() {
+  const modules = [...new Set(excelData.map((row) => row["Módulo"] || row["Modulo"]).filter(Boolean))]
+  const teachers = [...new Set(excelData.map((row) => row["Docente"]).filter(Boolean))]
 
-  const headers = excelData[0];
-  const moduleIndex = headers.indexOf("Módulo");
-  const teacherIndex = headers.indexOf("Docente");
+  moduleSelect.innerHTML = '<option value="">Seleccione un módulo</option>'
+  modules.forEach((module) => {
+    const option = document.createElement("option")
+    option.value = module
+    option.textContent = module
+    moduleSelect.appendChild(option)
+  })
 
-  if (moduleIndex === -1 || teacherIndex === -1) {
-    showMessage("No se encontraron las columnas de Módulo o Docente", "error");
-    return;
-  }
+  teacherSelect.innerHTML = '<option value="">Seleccione un docente</option>'
+  teachers.forEach((teacher) => {
+    const option = document.createElement("option")
+    option.value = teacher
+    option.textContent = teacher
+    teacherSelect.appendChild(option)
+  })
 
-  // Obtener módulos y docentes únicos
-  const uniqueModules = new Set();
-  const uniqueTeachers = new Set();
-
-  for (let i = 1; i < excelData.length; i++) {
-    const row = excelData[i];
-    if (row[moduleIndex] && row[teacherIndex]) {
-      uniqueModules.add(row[moduleIndex]);
-      uniqueTeachers.add(row[teacherIndex]);
-    }
-  }
-
-  // Llenar los dropdowns
-  populateDropdown(moduleSelect, Array.from(uniqueModules).sort());
-  populateDropdown(teacherSelect, Array.from(uniqueTeachers).sort());
-
-  // Habilitar los dropdowns
-  moduleSelect.disabled = false;
-  teacherSelect.disabled = false;
-
-  showMessage(
-    '<i class="fas fa-check-circle"></i> Archivo procesado correctamente. Seleccione un módulo y un docente.',
-    "success"
-  );
+  moduleSelect.disabled = false
+  teacherSelect.disabled = false
 }
 
-// Función para llenar un dropdown
-function populateDropdown(selectElement, options) {
-  // Limpiar opciones existentes excepto la primera
-  while (selectElement.options.length > 1) {
-    selectElement.remove(1);
-  }
-
-  // Agregar nuevas opciones
-  options.forEach((option) => {
-    const optionElement = document.createElement("option");
-    optionElement.value = option;
-    optionElement.textContent = option;
-    selectElement.appendChild(optionElement);
-  });
-}
-
-// Función para manejar el cambio de módulo
+// Manejar cambio de módulo
 function handleModuleChange() {
-  selectedModule = moduleSelect.value;
-  updateResults();
+  selectedModule = moduleSelect.value
+  updateResults()
 }
 
-// Función para manejar el cambio de docente
+// Manejar cambio de docente
 function handleTeacherChange() {
-  selectedTeacher = teacherSelect.value;
-  updateResults();
+  selectedTeacher = teacherSelect.value
+  updateResults()
 }
 
-// Función para actualizar los resultados
+// Actualizar resultados filtrados
 function updateResults() {
-  if (!selectedModule || !selectedTeacher) {
-    resultsSection.classList.add("hidden");
-    microdisenoSection.classList.add("hidden");
-    submitSection.classList.add("hidden");
-    return;
-  }
+  if (!selectedModule || !selectedTeacher) return
 
-  // Filtrar datos según el módulo y docente seleccionados
-  const headers = excelData[0];
-  const moduleIndex = headers.indexOf("Módulo");
-  const teacherIndex = headers.indexOf("Docente");
+  const filteredData = excelData.filter((row) => {
+    const module = row["Módulo"] || row["Modulo"]
+    const teacher = row["Docente"]
+    return module === selectedModule && teacher === selectedTeacher
+  })
 
-  const filteredData = excelData
-    .slice(1)
-    .filter(
-      (row) =>
-        row[moduleIndex] === selectedModule && row[teacherIndex] === selectedTeacher
-    );
+  resultsBody.innerHTML = ""
+  filteredData.forEach((row) => {
+    const tr = document.createElement("tr")
+    tr.innerHTML = `
+      <td>${row["Módulo"] || row["Modulo"] || ""}</td>
+      <td>${row["Grupo"] || ""}</td>
+      <td>${row["Docente"] || ""}</td>
+      <td>${formatExcelDate(row["Fecha de Clase"]) || ""}</td>
+      <td>${row["Tema"] || ""}</td>
+      <td>${formatExcelDate(row["Fecha Ingreso"]) || ""}</td>
+    `
+    resultsBody.appendChild(tr)
+  })
 
-  // Mostrar resultados
-  resultsBody.innerHTML = "";
-
-  if (filteredData.length === 0) {
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-    cell.colSpan = 6; // Cambiado a 6 columnas (eliminamos las 2 últimas)
-    cell.textContent =
-      "No se encontraron resultados para esta combinación de módulo y docente.";
-    cell.style.textAlign = "center";
-    row.appendChild(cell);
-    resultsBody.appendChild(row);
-  } else {
-    filteredData.forEach((rowData) => {
-      const row = document.createElement("tr");
-
-      // Solo mostrar las primeras 6 columnas (eliminamos Hrs. Clase y Hora Ingreso)
-      for (let i = 0; i < 6; i++) {
-        const cell = document.createElement("td");
-        let cellValue = rowData[i] || "";
-
-        // Formatear fechas según la columna
-        const columnName = headers[i];
-        if (columnName === "Fecha de Clase" || columnName === "Fecha Ingreso") {
-          cellValue = formatExcelDate(cellValue);
-        }
-
-        cell.textContent = cellValue;
-        row.appendChild(cell);
-      }
-
-      resultsBody.appendChild(row);
-    });
-  }
-
-  // Mostrar secciones
-  resultsSection.classList.remove("hidden");
-  microdisenoSection.classList.remove("hidden");
-  submitSection.classList.remove("hidden");
-
-  // Actualizar el indicador de pasos
-  updateStepIndicator(3);
+  resultsSection.classList.remove("hidden")
+  microdisenoSection.classList.remove("hidden")
+  submitSection.classList.remove("hidden")
+  updateStepIndicator(3)
 }
 
-// —————————————————————————————————————————
-// Función para extraer texto de .docx con Mammoth.js
-// Asegúrate de haber incluido en tu HTML:
-// <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-async function extractDocxText(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer });
-  return result.value; // Texto plano extraído
+// Formatear fechas de Excel
+function formatExcelDate(excelDate) {
+  if (!excelDate || isNaN(excelDate)) return excelDate
+
+  // 1. Convert Excel date to Unix Timestamp (milliseconds)
+  // 25569 is the offset of days between Excel (1900-01-01) and Unix (1970-01-01)
+  // We subtract this to align the timelines.
+  const date = new Date((excelDate - 25569) * 24 * 60 * 60 * 1000)
+
+  // 2. Use UTC methods to ensure we stay on the exact calculated day
+  // (prevents rolling back hours due to local timezones)
+  const day = date.getUTCDate().toString().padStart(2, "0")
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0")
+  const year = date.getUTCFullYear()
+
+  console.log(`Formatted date for Excel date ${excelDate}: ${day}/${month}/${year}`)
+
+  return `${day}/${month}/${year}`
 }
 
-// Función para extraer texto de .pdf con pdfjsLib
-// Asegúrate de haber incluido en tu HTML:
-// <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+// Extraer texto de archivo PDF
 async function extractPdfText(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let fullText = "";
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise // Assuming pdfjsLib is loaded via script tag
+  let fullText = ""
+
   for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const strings = content.items.map((item) => item.str);
-    fullText += strings.join(" ") + "\n\n";
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const strings = content.items.map((item) => item.str)
+    fullText += strings.join(" ") + "\n\n"
   }
-  return fullText;
+
+  return fullText
 }
 
-// Función para manejar la carga del archivo de microdiseño (.pdf o .docx)
+// Extraer texto de archivo DOCX
+async function extractDocxText(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const result = await window.mammoth.extractRawText({ arrayBuffer }) // Assuming mammoth is loaded via script tag
+  return result.value
+}
+
+// Manejar carga de microdiseño
 async function handleMicrodisenoUpload(event) {
-  event.preventDefault();
-  const file = event.target.files[0];
-  if (!file) return;
-  webhookTableBody.innerHTML = "";
+  const file = event.target.files[0]
+  if (!file) return
 
-  microdisenoFile = file;
-  microdisenoFileName.textContent = file.name;
-  microdisenoUploaded = true;
-  updateSubmitButton();
-  updateStepIndicator(4);
+  microdisenoFile = file
+  microdisenoFileName.textContent = file.name
+  microdisenoUploaded = true
+  updateSubmitButton()
+  updateStepIndicator(4)
+  setTimeout(() => {
+    clearAllColumns()
+  }, 1000)
 
-  // Extraemos y mostramos el texto en consola (o en un modal si prefieres)
   try {
-    let texto;
+    let texto
     if (file.type === "application/pdf") {
-      texto = await extractPdfText(file);
+      texto = await extractPdfText(file)
     } else if (
-      file.type ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       file.name.toLowerCase().endsWith(".docx")
     ) {
-      texto = await extractDocxText(file);
+      texto = await extractDocxText(file)
     } else {
-      showMessage(
-        '<i class="fas fa-exclamation-circle"></i> Formato no soportado. Use PDF o DOCX.',
-        "error"
-      );
-      microdisenoUploaded = false;
-      microdisenoFile = null;
-      microdisenoFileName.textContent = "";
-      microdisenoFileElement.value = "";
-      return;
+      showMessage('<i class="fas fa-exclamation-circle"></i> Formato no soportado. Use PDF o DOCX.', "error")
+      microdisenoUploaded = false
+      microdisenoFile = null
+      microdisenoFileName.textContent = ""
+      microdisenoFileElement.value = ""
+      return
     }
-    // console.log("Texto extraído:", texto);
-    // Si deseas mostrarlo en un modal:
-    // showTextModal("Vista previa del microdiseño", texto);
   } catch (err) {
-    console.error("Error al extraer texto del archivo:", err);
-    showMessage('<i class="fas fa-exclamation-circle"></i> Error al procesar el archivo', "error");
-    microdisenoUploaded = false;
-    microdisenoFile = null;
-    microdisenoFileName.textContent = "";
-    microdisenoFileElement.value = "";
+    console.error("Error al extraer texto del archivo:", err)
+    alert("Algo salió mal. Por favor, intente nuevamente.")
+    showMessage('<i class="fas fa-exclamation-circle"></i> Error al procesar el archivo', "error")
+    microdisenoUploaded = false
+    microdisenoFile = null
+    microdisenoFileName.textContent = ""
+    microdisenoFileElement.value = ""
   }
 }
 
-// Función para actualizar el estado del botón de envío
+// Actualizar estado del botón de envío
 function updateSubmitButton() {
-  submitButton.disabled = !(selectedModule && selectedTeacher && microdisenoUploaded);
+  submitButton.disabled = !(selectedModule && selectedTeacher && microdisenoUploaded)
 
   if (!submitButton.disabled) {
-    updateStepIndicator(5);
+    updateStepIndicator(5)
   }
 }
 
-// Función para enviar el reporte (incluye texto extraído del .pdf o .docx)
 async function submitReport() {
-  if (!selectedModule || !selectedTeacher) {
-    showMessage(
-      '<i class="fas fa-exclamation-triangle"></i> Debe seleccionar un módulo y un docente',
-      "error"
-    );
-    return;
-  }
-  if (!microdisenoFile) {
-    showMessage(
-      '<i class="fas fa-exclamation-triangle"></i> Debe subir el archivo de microdiseño',
-      "error"
-    );
-    return;
+  setTimeout(() => {
+    clearAllColumns()
+  }, 1000)
+
+  if (!selectedModule || !selectedTeacher || !microdisenoFile) {
+    showMessage('<i class="fas fa-exclamation-circle"></i> Por favor complete todos los pasos', "error")
+    return
   }
 
-  showMessage(
-    '<i class="fas fa-spinner fa-spin"></i> Procesando y enviando reporte...',
-    "success"
-  );
+  showMessage('<i class="fas fa-spinner fa-spin"></i> Enviando reporte y esperando respuesta...', "loading")
 
   try {
-    // Extraemos el texto del Word o PDF
-    let textoExtraido;
+    // Extraer texto del microdiseño
+    let textoExtraido
     if (microdisenoFile.type === "application/pdf") {
-      textoExtraido = await extractPdfText(microdisenoFile);
+      textoExtraido = await extractPdfText(microdisenoFile)
     } else {
-      textoExtraido = await extractDocxText(microdisenoFile);
+      textoExtraido = await extractDocxText(microdisenoFile)
     }
 
-    // console.log("Texto extraído para envío:", textoExtraido);
-
-    // Preparamos el payload
+    // Preparar el payload exactamente como se especificó
     const payload = {
       modulo: selectedModule,
       docente: selectedTeacher,
@@ -584,276 +355,424 @@ async function submitReport() {
         tipo: microdisenoFile.type,
         contenido: textoExtraido,
       },
-    };
+      iaActivada: iaActivada, // Agregado estado de IA al payload
+    }
 
-    const res = await fetch(
-      "https://hook.us2.make.com/y1tdc65uhvgp5o5plum5bw10or62dld9",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify(payload),
-      }
-    );
-    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+    // Enviar POST request al webhook
+    const response = await fetch("https://hook.eu2.make.com/gaurg2exleqajrtl3jf5u4h558ejv2sy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify(payload),
+    })
 
-    await res.text();
-    showMessage(
-      '<i class="fas fa-check-circle"></i> Reporte enviado correctamente',
-      "success"
-    );
+    if (!response.ok) {
+      throw new Error(`Error del servidor: ${response.status}`)
+    }
 
-    // ---------- AQUÍ LIMPIAMOS EL ARCHIVO SUBIDO ----------
-    microdisenoFile = null;
-    microdisenoUploaded = false;
-    microdisenoFileElement.value = ""; // borrar selección en el input
-    microdisenoFileName.textContent = ""; // borrar nombre mostrado
+    webhookData = await response.json()
 
-    // Deshabilitar nuevamente el botón de envío hasta que suban otro archivo
-    submitButton.disabled = true;
+    console.log("Respuesta recibida del webhook:", webhookData)
 
-    // Mantener visible la sección, sin ocultarla
-    updateStepIndicator(4);
+    showMessage('<i class="fas fa-check-circle"></i> Reporte enviado y respuesta recibida correctamente', "success")
+
+    createClassComparison(webhookData)
+
+    // Limpiar el archivo de microdiseño
+    microdisenoFile = null
+    microdisenoUploaded = false
+    microdisenoFileElement.value = ""
+    microdisenoFileName.textContent = ""
+    submitButton.disabled = true
   } catch (err) {
-    console.error("Error en submitReport:", err);
-    showMessage(
-      '<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' +
-      err.message,
-      "error"
-    );
+    if (!iaActivada) {
+      alert("Algo salió mal. Por favor, intente nuevamente.")
+      console.error("Error al enviar el reporte:", err)
+      showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar el reporte: ' + err.message, "error")
+    }
   }
 }
 
-// Función para mostrar mensajes en pantalla
-function showMessage(text, type) {
-  messageDiv.innerHTML = text;
-  messageDiv.className = "message " + type;
-  messageDiv.classList.remove("hidden");
+function createClassComparison(weeklyData) {
+  coherenciaSelections = {}
 
-  // Ocultar el mensaje después de 5 segundos si es un mensaje de éxito
-  if (type === "success") {
-    setTimeout(() => {
-      messageDiv.classList.add("hidden");
-    }, 5000);
+  // Verificar si ya existe la sección, si no crearla
+  let comparisonSection = document.getElementById("comparisonSection")
+
+  if (!comparisonSection) {
+    comparisonSection = document.createElement("div")
+    comparisonSection.id = "comparisonSection"
+    comparisonSection.className = "section comparison-section"
+    comparisonSection.innerHTML = `
+      <h2 class="section-title">
+        <i class="fas fa-clipboard-check"></i> Comparación de Clases
+      </h2>
+      <div id="comparisonContainer" class="comparison-container"></div>
+    `
+    submitSection.parentNode.insertBefore(comparisonSection, submitSection.nextSibling)
   }
+
+  const container = document.getElementById("comparisonContainer")
+  container.innerHTML = ""
+
+  // Filtrar datos del Excel por módulo y docente seleccionados
+  const filteredData = excelData.filter((row) => {
+    const module = row["Módulo"] || row["Modulo"]
+    const teacher = row["Docente"]
+    return module === selectedModule && teacher === selectedTeacher
+  })
+
+  // Agrupar por grupo
+  const groupedByGrupo = {}
+  filteredData.forEach((row) => {
+    const grupo = row["Grupo"]
+    if (!groupedByGrupo[grupo]) {
+      groupedByGrupo[grupo] = []
+    }
+    groupedByGrupo[grupo].push(row)
+  })
+
+  const weeklyArray = Object.entries(weeklyData)
+    .sort((a, b) => {
+      const numA = Number.parseInt(a[0].replace("Semana", ""))
+      const numB = Number.parseInt(b[0].replace("Semana", ""))
+      return numA - numB
+    })
+    .map(([key, value]) => ({
+      semana: key,
+      tema: value[0],
+      fechaInicio: value[1],
+      fechaFin: value[2],
+    }))
+
+  let totalRows = 0
+
+  // Para cada grupo, crear una sección
+  for (const [grupo, clases] of Object.entries(groupedByGrupo)) {
+    // Ordenar clases por fecha
+    const clasesOrdenadas = clases.sort((a, b) => {
+      const fechaA = a["Fecha de Clase"]
+      const fechaB = b["Fecha de Clase"]
+      return fechaA - fechaB
+    })
+
+    const groupSection = document.createElement("div")
+    groupSection.className = "group-section"
+    groupSection.innerHTML = `
+      <h3 class="group-title">
+        <i class="fas fa-users"></i> Grupo: ${grupo}
+      </h3>
+      <div class="comparison-table-container">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Grupo</th>
+              <th>Docente</th>
+              <th>Tema Dado</th>
+              <th>Tema Esperado</th>
+              <th>Fecha Clase</th>
+              <th>Fecha Estimada</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="comparison-body-${grupo}"></tbody>
+        </table>
+      </div>
+    `
+    container.appendChild(groupSection)
+
+    const tbody = document.getElementById(`comparison-body-${grupo}`)
+
+    const usedWeeks = new Set()
+
+    clasesOrdenadas.forEach((clase, index) => {
+      const fechaClase = formatExcelDate(clase["Fecha de Clase"])
+      const temaDado = clase["Tema"] || ""
+      const docente = clase["Docente"] || ""
+
+      const matchedWeek = findMatchingWeekByDate(fechaClase, weeklyArray, usedWeeks)
+
+      let temaEsperado = ""
+      let fechaEstimada = ""
+
+      if (matchedWeek) {
+        temaEsperado = matchedWeek.tema.replace("Tema:", "").trim()
+        fechaEstimada = `${matchedWeek.fechaInicio} - ${matchedWeek.fechaFin}`
+        usedWeeks.add(matchedWeek.semana)
+      }
+
+      const rowId = `row-${grupo}-${index}`
+      totalRows++
+
+      // Crear fila
+      const row = document.createElement("tr")
+      row.id = rowId
+      row.innerHTML = `
+        <td>${grupo}</td>
+        <td>${docente}</td>
+        <td class="tema-cell">${temaDado}</td>
+        <td class="tema-cell">${temaEsperado}</td>
+        <td>${fechaClase}</td>
+        <td>${fechaEstimada}</td>
+        <td>
+          <div class="action-buttons-cell" data-row-id="${rowId}">
+            <button class="btn-coherente" data-docente="${docente}" data-tema-dado="${temaDado}" data-tema-esperado="${temaEsperado}" data-grupo="${grupo}" data-asignatura="${selectedModule}" data-fecha-clase="${fechaClase}">
+              <i class="fas fa-check"></i> Coherente
+            </button>
+            <button class="btn-no-coherente" data-docente="${docente}" data-tema-dado="${temaDado}" data-tema-esperado="${temaEsperado}" data-grupo="${grupo}" data-asignatura="${selectedModule}" data-fecha-clase="${fechaClase}">
+              <i class="fas fa-times"></i> No Coherente
+            </button>
+          </div>
+        </td>
+      `
+      tbody.appendChild(row)
+    })
+  }
+
+  attachCoherenciaListeners()
+
+  createFinalSubmitButton(totalRows)
+
+  // Scroll suave hacia la sección de comparación
+  comparisonSection.scrollIntoView({ behavior: "smooth", block: "start" })
 }
 
-// Función auxiliar: parsear "DD/MM/YYYY" a Date
-function parseDMY(str) {
-  const parts = str.split("/").map((p) => parseInt(p, 10));
-  // parts = [día, mes, año]
-  return new Date(parts[2], parts[1] - 1, parts[0]);
-}
+function attachCoherenciaListeners() {
+  const allButtons = document.querySelectorAll(".btn-coherente, .btn-no-coherente")
 
-let needsAlert = false;
-// Función para reenviar a Make si existe alguna semana con fecha final < 31/05/2025
+  allButtons.forEach((button) => {
+    button.addEventListener("click", function (e) {
+      e.preventDefault()
 
-let id = "03/02/2025";
-// Función para mostrar los datos del webhook en la tabla
-function displayWebhookData(data) {
-  webhookTableBody.innerHTML = "";
+      const rowId = this.closest(".action-buttons-cell").dataset.rowId
+      const isCoherente = this.classList.contains("btn-coherente")
 
-  // 1) Verificar y reenviar si corresponde (solo una vez)
+      const docente = this.dataset.docente
+      const temaDado = this.dataset.temaDado
+      const temaEsperado = this.dataset.temaEsperado
+      const grupo = this.dataset.grupo
+      const asignatura = this.dataset.asignatura
+      const fechaClase = this.dataset.fechaClase
 
-  // 2) Construir filas. También, detectar si hay celdas a resaltar
+      coherenciaSelections[rowId] = {
+        docente,
+        temaDado,
+        temaEsperado,
+        coherencia: isCoherente,
+        grupo,
+        asignatura,
+        fechaClase,
+      }
 
-  for (const groupId in data) {
-    const groupData = data[groupId];
+      const buttonsCell = this.closest(".action-buttons-cell")
+      const row = document.getElementById(rowId)
+      const coherenteBtn = buttonsCell.querySelector(".btn-coherente")
+      const noCoherenteBtn = buttonsCell.querySelector(".btn-no-coherente")
 
-    groupData.forEach((entry) => {
-      const row = document.createElement("tr");
+      coherenteBtn.classList.remove("selected", "unselected")
+      noCoherenteBtn.classList.remove("selected", "unselected")
 
-      // Aplicar clase según el estado de éxito
-      if (entry.success) {
-        row.classList.add("success-row");
+      if (isCoherente) {
+        coherenteBtn.classList.add("selected")
+        noCoherenteBtn.classList.add("unselected")
       } else {
-        row.classList.add("error-row");
+        noCoherenteBtn.classList.add("selected")
+        coherenteBtn.classList.add("unselected")
       }
 
-      // CELDA 1: Grupo
-      const groupCell = document.createElement("td");
-      groupCell.textContent = groupId;
-      row.appendChild(groupCell);
+      row.classList.add("row-selected")
 
-      // CELDA 2: Fecha de Clase
-      const dateCell = document.createElement("td");
-      let dateClass = entry.dateOfClass;
-      let aux = dateClass.split("/");
-      dateClass = aux[1]+"/"+aux[0]+"/"+aux[2];
-      dateCell.textContent = dateClass || "";
-      row.appendChild(dateCell);
+      checkAllSelectionsComplete()
+    })
+  })
+}
 
-      // CELDA 3: Tema Dado
-      const temaDadoCell = document.createElement("td");
-      temaDadoCell.textContent = entry.temaDado || "";
-      row.appendChild(temaDadoCell);
+function createFinalSubmitButton(totalRows) {
+  if (!finalSubmitContainer) {
+    finalSubmitContainer = document.createElement("div")
+    finalSubmitContainer.id = "finalSubmitContainer"
+    finalSubmitContainer.className = "final-submit-container"
+    finalSubmitContainer.innerHTML = `
+      <button id="finalSubmitBtn" class="btn-final-submit" disabled>
+        <i class="fas fa-paper-plane"></i> Enviar Todas las Evaluaciones
+      </button>
+      <p class="selections-counter">
+        <span id="selectionsCount">0</span> / <span id="totalCount">${totalRows}</span> selecciones completadas
+      </p>
+    `
 
-      // CELDA 4: Tema Esperado
-      const temaEsperadoCell = document.createElement("td");
-      temaEsperadoCell.textContent = entry.temaEsperado || "";
-      row.appendChild(temaEsperadoCell);
-
-      // CELDA 5: Semana
-      const weekCell = document.createElement("td");
-      
-      if(entry.week){
-        weekCell.textContent = id +" --- " + entry.week;
-      }else{
-        needsAlert = true;
-      }
-      
-       id  = entry.week
-      // Si el formato es "DD/MM/YYYY - DD/MM/YYYY", evaluamos la segunda fecha
-
-      row.appendChild(weekCell);
-
-      // CELDA 6: Acciones (botones)
-      const actionsCell = document.createElement("td");
-      const actionsDiv = document.createElement("div");
-      actionsDiv.className = "action-buttons";
-
-      // Botón de Coherente
-      const coherentBtn = document.createElement("button");
-      coherentBtn.className = "btn-check";
-      coherentBtn.innerHTML = '<i class="fas fa-check"></i> Coherente';
-      coherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, "x", "", "");
-        row.remove();
-      };
-      actionsDiv.appendChild(coherentBtn);
-
-      // Botón de Incoherente
-      const incoherentBtn = document.createElement("button");
-      incoherentBtn.className = "btn-x";
-      incoherentBtn.innerHTML = '<i class="fas fa-times"></i> Incoherente';
-      incoherentBtn.onclick = () => {
-        addActionAndMaybeSend(groupId, entry, "", "x", `el tema dado ${entry.temaDado || "(Vacío)"
-          } NO es coherente con el tema esperado ${entry.temaEsperado || "sin tema esperado"}`);
-        row.remove();
-      };
-      actionsDiv.appendChild(incoherentBtn);
-
-      actionsCell.appendChild(actionsDiv);
-      row.appendChild(actionsCell);
-
-      // Agregar la fila a la tabla
-      webhookTableBody.appendChild(row);
-    });
+    const comparisonSection = document.getElementById("comparisonSection")
+    comparisonSection.appendChild(finalSubmitContainer)
+  } else {
+    document.getElementById("totalCount").textContent = totalRows
+    document.getElementById("selectionsCount").textContent = 0
   }
 
-  // 3) Si hubo alguna semana inválida (< 31/05/2025), mostrar alerta
-  if (needsAlert) {
-    alert("Por favor, se recomienda que vuelva a hacer el proceso. Si el problema persiste confirme las fechas manualmente, pues según el microdiseño no se registran clases en las semana final (25 de Mayo a 31 de Mayo).");
-    needsAlert = false; // Reiniciar la bandera para futuros envíos
-    
+  const finalBtn = document.getElementById("finalSubmitBtn")
+  finalBtn.addEventListener("click", submitAllCoherencias)
+}
+
+function checkAllSelectionsComplete() {
+  const totalRows = document.querySelectorAll(".comparison-table tbody tr").length
+  const selectedCount = Object.keys(coherenciaSelections).length
+
+  document.getElementById("selectionsCount").textContent = selectedCount
+
+  const finalBtn = document.getElementById("finalSubmitBtn")
+  if (selectedCount === totalRows) {
+    finalBtn.disabled = false
+    finalBtn.classList.add("enabled")
+  } else {
+    finalBtn.disabled = true
+    finalBtn.classList.remove("enabled")
   }
 }
 
-// Función para enviar la solicitud de acción (Coherente/Incoherente)
-function addActionAndMaybeSend(groupId, entry, obser1, obser2, color) {
-  // Empuja al array de pendientes
-  pendingActions.push({
-    modulo: selectedModule,
-    groupId,
-    docente: selectedTeacher,
-    fechaClase: entry.dateOfClass.toString(),
-    obser1: obser1,
-    obser2: obser2,
-    obser3: color,
+async function submitAllCoherencias() {
+  const selectionsArray = Object.values(coherenciaSelections)
 
-  });
-
-  // Elimina la fila (esto ya lo hacías)
-  // ... (tu código para row.remove())
-
-  // Si ya no quedan filas en la tabla, envía el lote
-  const rowsLeft = webhookTableBody.querySelectorAll("tr").length;
-  console.log("Filas restantes:", rowsLeft);
-  if (rowsLeft === 1) {
-    console.log("Buffer de acciones pendiente:", pendingActions);
-    sendBatchActions();
+  if (selectionsArray.length === 0) {
+    showMessage('<i class="fas fa-exclamation-circle"></i> No hay evaluaciones para enviar', "error")
+    return
   }
-}
 
-async function sendBatchActions() {
-  if (pendingActions.length === 0) return;
-
-  showMessage(
-    '<i class="fas fa-spinner fa-spin"></i> Enviando lote de acciones...',
-    "success"
-  );
+  showMessage(`<i class="fas fa-spinner fa-spin"></i> Enviando ${selectionsArray.length} evaluaciones...`, "loading")
 
   try {
-    pendingActions = {
-      actions: pendingActions,
-    }
-    const res = await fetch(
-      "https://hook.us2.make.com/qefil1n1twwp97kczuuw4ugbvn6sr2es",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "sessionToken": sessionToken },
-        body: JSON.stringify(pendingActions),
-      }
-    );
-    if (!res.ok) throw new Error("Error en la respuesta del servidor");
-
-    await res.text();
-    showMessage(
-      `<i class="fas fa-check-circle"></i> Todas las acciones enviadas correctamente`,
-      "success"
-    );
-    // Vacía el array para la próxima vez
-    pendingActions = [];
-  } catch (err) {
-    console.error("Error al enviar lote de acciones:", err);
-    showMessage(
-      '<i class="fas fa-exclamation-circle"></i> Error al enviar lote: ' + err.message,
-      "error"
-    );
-  }
-}
-
-
-// Función para mostrar el modal con texto completo (observaciones, etc.)
-function showTextModal(title, text) {
-  modalTitle.textContent = title;
-  modalBody.textContent = text;
-  textModal.style.display = "block";
-}
-
-// Función para cerrar el modal
-function closeModal() {
-  textModal.style.display = "none";
-}
-
-// Función para copiar la URL del webhook
-function copyWebhookUrl() {
-  const webhookUrl = document.getElementById("webhookUrl");
-  navigator.clipboard
-    .writeText(webhookUrl.textContent)
-    .then(() => {
-      copyUrlBtn.innerHTML = '<i class="fas fa-check"></i>';
-      setTimeout(() => {
-        copyUrlBtn.innerHTML = '<i class="fas fa-copy"></i>';
-      }, 2000);
+    const response = await fetch("https://hook.eu2.make.com/gaurg2exleqajrtl3jf5u4h558ejv2sy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({ evaluaciones: selectionsArray, sessionToken: sessionToken }),
     })
-    .catch((err) => {
-      console.error("Error al copiar: ", err);
-    });
+
+    if (!response.ok) {
+      throw new Error(`Error del servidor: ${response.status}`)
+    }
+
+    showMessage(`<i class="fas fa-check-circle"></i> Reporte enviado con éxito`, "success", 1000)
+
+    const finalBtn = document.getElementById("finalSubmitBtn")
+    finalBtn.disabled = true
+    finalBtn.classList.remove("enabled")
+    finalBtn.innerHTML = '<i class="fas fa-check"></i> Evaluaciones Enviadas'
+
+    setTimeout(() => {
+      clearAllColumns()
+    }, 1000)
+  } catch (err) {
+    console.error("[v0] Error al enviar evaluaciones:", err)
+    alert("Algo salió mal. Por favor, intente nuevamente.")
+    showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar evaluaciones: ' + err.message, "error")
+  }
 }
 
-// Cerrar el modal si se hace clic fuera de él
-window.onclick = (event) => {
-  if (event.target === textModal) {
-    closeModal();
-  }
-};
+function findMatchingWeekByDate(fechaClase, weeklyArray, usedWeeks = new Set()) {
+  const claseDateParts = fechaClase.split("/")
+  const classDate = new Date(claseDateParts[2], claseDateParts[1] - 1, claseDateParts[0])
+  classDate.setHours(0, 0, 0, 0)
 
-// Limpiar la conexión SSE cuando se cierra la página
-window.addEventListener("beforeunload", () => {
-  if (eventSource) {
-    eventSource.close();
-  }
-});
+  let closestWeek = null
+  let smallestDifference = Number.POSITIVE_INFINITY
 
-// Inicializar el indicador de pasos
-updateStepIndicator(1);
+  for (const week of weeklyArray) {
+    if (usedWeeks.has(week.semana)) {
+      continue
+    }
+
+    const startParts = week.fechaInicio.split("/")
+    const startDate = new Date(startParts[2], startParts[1] - 1, startParts[0])
+    startDate.setHours(0, 0, 0, 0)
+    const endParts = week.fechaFin.split("/")
+    const endDate = new Date(endParts[2], endParts[1] - 1, endParts[0])
+    endDate.setHours(23, 59, 59, 999)
+
+    if (classDate >= startDate && classDate <= endDate) {
+      return week
+    }
+
+    const distanceToStart = Math.abs(classDate - startDate)
+    const distanceToEnd = Math.abs(classDate - endDate)
+    const minDistance = Math.min(distanceToStart, distanceToEnd)
+
+    if (minDistance < smallestDifference) {
+      smallestDifference = minDistance
+      closestWeek = week
+    }
+  }
+
+  if (closestWeek && smallestDifference <= 2 * 24 * 60 * 60 * 1000) {
+    return closestWeek
+  }
+
+  return null
+}
+
+function showMessage(text, type, duration = 5000) {
+  messageDiv.innerHTML = text
+  messageDiv.className = "message " + type
+  messageDiv.classList.remove("hidden")
+
+  if (type === "success") {
+    setTimeout(() => {
+      messageDiv.classList.add("hidden")
+    }, duration)
+  } else {
+    setTimeout(() => {
+      messageDiv.classList.add("hidden")
+    }, duration)
+  }
+}
+
+async function sendCoherencia(docente, temaDado, temaEsperado, coherencia, grupo, asignatura, fechaClase) {
+  temaDado = temaDado.replace(/&apos;/g, "'").replace(/&quot;/g, '"')
+  temaEsperado = temaEsperado.replace(/&apos;/g, "'").replace(/&quot;/g, '"')
+
+  const payload = {
+    temaDado: temaDado,
+    temaEsperado: temaEsperado,
+    coherencia: coherencia,
+    docente: docente,
+    grupo: grupo,
+    asignatura: asignatura,
+    fechaClase: fechaClase,
+    iaActivada: iaActivada,
+  }
+
+  console.log("[v0] Enviando coherencia:", payload)
+
+  try {
+    showMessage('<i class="fas fa-spinner fa-spin"></i> Enviando evaluación...', "loading")
+
+    const response = await fetch("https://hook.eu2.make.com/gaurg2exleqajrtl3jf5u4h558ejv2sy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Error del servidor: ${response.status}`)
+    }
+
+    showMessage(`<i class="fas fa-check-circle"></i> Reporte enviado con éxito`, "success", 1000)
+
+    setTimeout(() => {
+      clearAllColumns()
+    }, 1000)
+  } catch (err) {
+    console.error("[v0] Error al enviar coherencia:", err)
+    alert("Algo salió mal. Por favor, intente nuevamente.")
+    showMessage('<i class="fas fa-exclamation-circle"></i> Error al enviar evaluación: ' + err.message, "error")
+  }
+}
+
+window.addEventListener("load", () => {
+  tokenModal.style.display = "block"
+})
+
+console.log("Sistema de automatización inicializado correctamente")
+
