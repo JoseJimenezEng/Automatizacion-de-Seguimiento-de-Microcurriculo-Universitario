@@ -776,3 +776,4 @@ window.addEventListener("load", () => {
 
 console.log("Sistema de automatización inicializado correctamente")
 
+ 
